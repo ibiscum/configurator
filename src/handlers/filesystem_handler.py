@@ -68,6 +68,9 @@ class FilesystemHandler:
                     'message': 'Missing required field: directory'
                 }), 400
             
+            # Normalize the path to prevent path traversal attacks (e.g. "../.." segments)
+            directory = os.path.normpath(directory)
+            
             # Check if directory access is allowed
             if not self.allowed_symlink_destinations:
                 return jsonify({  # type: ignore[return-value]
@@ -220,6 +223,9 @@ class FilesystemHandler:
                     'status': 'error',
                     'message': 'Missing required field: path'
                 }), 400
+            
+            # Normalize the path to prevent path traversal attacks (e.g. "../.." segments)
+            path = os.path.normpath(path)
             
             # Check if directory access is allowed
             if not self.allowed_exists_check_destinations:
