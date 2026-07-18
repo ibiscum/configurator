@@ -5,8 +5,8 @@ import configparser
 from pathlib import Path
 from typing import Dict, List, Any
 
-from dbus_fast.aio import MessageBus
-from dbus_fast import DBusError, BusType
+from dbus_fast.aio import MessageBus  # type: ignore
+from dbus_fast import DBusError, BusType  # type: ignore
 
 # From the user's script
 class ConfigFileManager:
@@ -123,13 +123,13 @@ async def get_paired_devices() -> List[Dict[str, Any]]:
     """Returns a list of paired bluetooth devices using dbus-fast."""
     try:
         bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
-        introspection = await bus.introspect("org.bluez", "/")
+        introspection = await bus.introspect("org.bluez", "/")  # type: ignore
         obj = bus.get_proxy_object("org.bluez", "/", introspection)
-        
+
         # Get the ObjectManager interface
         om = obj.get_interface("org.freedesktop.DBus.ObjectManager")  # type: ignore
         objects = await om.call_GetManagedObjects()  # type: ignore
-        
+
         devices: List[Dict[str, Any]] = []
         for path, interfaces in objects.items():  # type: ignore
             if "org.bluez.Device1" in interfaces:  # type: ignore
@@ -141,9 +141,9 @@ async def get_paired_devices() -> List[Dict[str, Any]]:
                         "connected": bool(device.get("Connected", False)),  # type: ignore
                         "trusted": bool(device.get("Trusted", False)),  # type: ignore
                     })
-        
+
         return devices
-        
+
     except Exception as e:
         if (
             isinstance(DBusError, type)
@@ -162,16 +162,16 @@ async def unpair_device(address: str) -> Dict[str, str]:
         raise ValueError("Missing 'address' query parameter")
 
     address = address.upper()
-    
+
     try:
         bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
         introspection = await bus.introspect("org.bluez", "/")
         obj = bus.get_proxy_object("org.bluez", "/", introspection)
-        
+
         # Get the ObjectManager interface
         om = obj.get_interface("org.freedesktop.DBus.ObjectManager")  # type: ignore
         objects = await om.call_GetManagedObjects()  # type: ignore
-        
+
         # Find the device object path and its adapter
         for path, interfaces in objects.items():  # type: ignore
             if "org.bluez.Device1" in interfaces:  # type: ignore
@@ -183,13 +183,13 @@ async def unpair_device(address: str) -> Dict[str, str]:
                     adapter_introspection = await bus.introspect("org.bluez", adapter_path)
                     adapter_obj = bus.get_proxy_object("org.bluez", adapter_path, adapter_introspection)
                     adapter = adapter_obj.get_interface("org.bluez.Adapter1")  # type: ignore
-                    
+
                     # Remove the device
                     await adapter.call_RemoveDevice(path)  # type: ignore
                     return {"status": "unpaired", "address": address}
-        
+
         raise ValueError("Device not found")
-        
+
     except Exception as e:
         if (
             isinstance(DBusError, type)

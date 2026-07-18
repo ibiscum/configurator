@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""SMB/CIFS API handlers."""
 
 import logging
 import subprocess
@@ -6,11 +7,10 @@ import json
 import os
 from typing import Dict, List, Any, Optional, Union, cast
 import traceback
-from flask import jsonify, request, Response
 
 from ..sambaclient import (
-    list_all_servers, 
-    check_smb_connection, 
+    list_all_servers,
+    check_smb_connection,
     list_smb_shares
 )
 from ..sambamount import (
@@ -18,6 +18,30 @@ from ..sambamount import (
     remove_mount_config,
     list_configured_mounts
 )
+
+Response = Any
+
+try:
+    from flask import jsonify as _jsonify, request as _request  # type: ignore
+    jsonify = cast(Any, _jsonify)
+    request = cast(Any, _request)
+except ImportError:
+    def jsonify(*args: Any, **kwargs: Any) -> Any:  # type: ignore
+        """Stub jsonify when Flask is not installed."""
+        raise RuntimeError("Flask is not installed")
+
+    def _stub_get_json() -> Dict[str, Any]:
+        """Return empty payload for request stub."""
+        return {}
+
+    request = cast(Any, type(
+        "RequestStub",
+        (),
+        {
+            "is_json": False,
+            "get_json": staticmethod(_stub_get_json)
+        },
+    )())
 
 logger = logging.getLogger(__name__)
 
@@ -31,15 +55,15 @@ def load_mount_state() -> Dict[str, str]:
     """
     try:
         if os.path.exists(SAMBA_STATE_FILE):
-            with open(SAMBA_STATE_FILE, 'r') as f:
+            with open(SAMBA_STATE_FILE, 'r', encoding='utf-8') as f:
                 state = json.load(f)
-                logger.debug(f"Loaded mount state: {state}")
+                logger.debug("Loaded mount state: %s", state)
                 return state
         else:
             logger.debug("No existing mount state file found")
             return {}
     except Exception as e:
-        logger.warning(f"Failed to load mount state: {e}")
+        logger.warning("Failed to load mount state: %s", e)
         return {}
 
 def save_mount_state(mount_state: Dict[str, str]) -> None:
@@ -48,11 +72,11 @@ def save_mount_state(mount_state: Dict[str, str]) -> None:
     mount_state is a dict mapping mount keys (server/share) to mountpoints.
     """
     try:
-        with open(SAMBA_STATE_FILE, 'w') as f:
+        with open(SAMBA_STATE_FILE, 'w', encoding='utf-8') as f:
             json.dump(mount_state, f, indent=2)
-        logger.debug(f"Saved mount state: {mount_state}")
+        logger.debug("Saved mount state: %s", mount_state)
     except Exception as e:
-        logger.error(f"Failed to save mount state: {e}")
+        logger.error("Failed to save mount state: %s", e)
 
 def get_mount_key(server: str, share: str) -> str:
     """Generate a unique key for a server/share combination"""
@@ -64,31 +88,32 @@ def unmount_share(mountpoint: str) -> bool:
     Returns True if successful, False otherwise.
     """
     try:
-        logger.info(f"Unmounting {mountpoint}")
+        logger.info("Unmounting %s", mountpoint)
         result = subprocess.run(
             ['umount', mountpoint],
             capture_output=True,
             text=True,
-            timeout=10
+            timeout=10,
+            check=False
         )
-        
+
         if result.returncode == 0:
-            logger.info(f"Successfully unmounted {mountpoint}")
+            logger.info("Successfully unmounted %s", mountpoint)
             return True
         else:
-            logger.warning(f"Failed to unmount {mountpoint}: {result.stderr}")
+            logger.warning("Failed to unmount %s: %s", mountpoint, result.stderr)
             return False
     except Exception as e:
-        logger.error(f"Error unmounting {mountpoint}: {e}")
+        logger.error("Error unmounting %s: %s", mountpoint, e)
         return False
 
 class SMBHandler:
     """Handler for SMB/CIFS related API endpoints"""
-    
+
     def __init__(self):
         """Initialize the SMB handler"""
         logger.debug("Initializing SMBHandler")
-    
+
     def handle_list_servers(self) -> 'Union[Response, tuple[Response, int]]':
         """
         Handle GET /api/v1/smb/servers
@@ -97,7 +122,7 @@ class SMBHandler:
         try:
             logger.debug("Listing SMB servers on network")
             servers = list_all_servers()
-            
+
             return jsonify({
                 'status': 'success',
                 'data': {
@@ -105,7 +130,7 @@ class SMBHandler:
                     'count': len(servers)
                 }
             })
-            
+
         except Exception as e:
             logger.error(f"Error listing SMB servers: {e}")
             logger.debug(traceback.format_exc())
@@ -114,7 +139,7 @@ class SMBHandler:
                 'message': 'Failed to list SMB servers',
                 'error': str(e)
             }), 500
-    
+
     def handle_test_connection(self, server: str) -> 'Union[Response, tuple[Response, int]]':
         """
         Handle POST /api/v1/smb/test/<server>
@@ -125,21 +150,21 @@ class SMBHandler:
             data: Dict[str, Any] = cast(Dict[str, Any], request.get_json() or {})
             username: Optional[str] = data.get('username')
             password: Optional[str] = data.get('password')
-            
+
             # Server can be provided in request body or URL path
             # Request body takes precedence over URL path
             server_from_body: Optional[str] = data.get('server')
             test_server: str = server_from_body if server_from_body else server
-            
+
             logger.debug(f"Testing connection to SMB server: {test_server}")
-            
+
             # Test connection
             connected, error_msg = check_smb_connection(
                 server=test_server,
                 username=username,
                 password=password
             )
-            
+
             if connected:
                 return jsonify({
                     'status': 'success',
@@ -159,12 +184,12 @@ class SMBHandler:
                         'error': error_msg or 'Unknown connection error'
                     }
                 })
-                
+
         except Exception as e:
             # Use the server from body if available, otherwise fall back to URL path
             data = cast(Dict[str, Any], request.get_json() or {})
             test_server = data.get('server', server)
-            
+
             logger.error(f"Error testing connection to {test_server}: {e}")
             logger.debug(traceback.format_exc())
             return jsonify({
@@ -176,7 +201,7 @@ class SMBHandler:
                     'error': str(e)
                 }
             })
-    
+
     def handle_list_shares(self) -> 'Union[Response, tuple[Response, int]]':
         """
         Handle POST /api/v1/smb/shares
@@ -189,23 +214,23 @@ class SMBHandler:
             username: Optional[str] = data.get('username')
             password: Optional[str] = data.get('password')
             detailed: bool = data.get('detailed', False)
-            
+
             # Validate required parameters
             if not server:
                 return jsonify({
                     'status': 'error',
                     'message': 'Missing required parameter: server'
                 }), 400
-            
+
             logger.debug(f"Listing shares on SMB server: {server}")
-            
+
             # List shares
             shares, detected_version = list_smb_shares(
                 server=server,
                 username=username,
                 password=password
             )
-            
+
             # Convert shares to the expected format
             share_list: List[Dict[str, Any]] = []
             for share in shares:
@@ -217,28 +242,28 @@ class SMBHandler:
                 if detailed:
                     share_info['size'] = share.get('size') or ''
                     share_info['available'] = share.get('available') or ''
-                
+
                 share_list.append(share_info)
-            
+
             response_data: Dict[str, Any] = {
                 'server': server,
                 'shares': share_list,
                 'count': len(share_list)
             }
-            
+
             if detected_version:
                 response_data['detected_version'] = detected_version
-            
+
             return jsonify({
                 'status': 'success',
                 'data': response_data
             })
-            
+
         except Exception as e:
             # Get server from request body
             data = cast(Dict[str, Any], request.get_json() or {})
             target_server = data.get('server', 'unknown')
-            
+
             logger.error(f"Error listing shares on {target_server}: {e}")
             logger.debug(traceback.format_exc())
             return jsonify({
@@ -246,7 +271,7 @@ class SMBHandler:
                 'message': f'Failed to list shares on {target_server}',
                 'error': str(e)
             }), 500
-    
+
     def handle_list_mounts(self) -> 'Union[Response, tuple[Response, int]]':
         """
         Handle GET /api/v1/smb/mounts
@@ -254,20 +279,20 @@ class SMBHandler:
         """
         try:
             logger.debug("Listing SMB mount configurations")
-            
+
             # Use the existing function that already reads from ConfigDB and checks mount status
             mounts = list_configured_mounts()
-            
+
             # Collect statistics
             mounted_count = 0
             unmounted_count = 0
-            
+
             for mount in mounts:
                 if mount.get('mounted', False):
                     mounted_count += 1
                 else:
                     unmounted_count += 1
-            
+
             return jsonify({
                 'status': 'success',
                 'data': {
@@ -280,7 +305,7 @@ class SMBHandler:
                     }
                 }
             })
-            
+
         except Exception as e:
             logger.error(f"Error listing SMB mounts: {e}")
             logger.debug(traceback.format_exc())
@@ -289,7 +314,7 @@ class SMBHandler:
                 'message': 'Failed to list SMB mounts',
                 'error': str(e)
             }), 500
-    
+
     def handle_manage_mount(self) -> 'Union[Response, tuple[Response, int]]':
         """
         Handle POST /api/v1/smb/mount
@@ -302,14 +327,14 @@ class SMBHandler:
                     'status': 'error',
                     'message': 'Content-Type must be application/json'
                 }), 400
-            
+
             data: Dict[str, Any] = cast(Dict[str, Any], request.get_json())  # type: ignore[union-attr]
             if not data:
                 return jsonify({
                     'status': 'error',
                     'message': 'Missing request body'
                 }), 400
-            
+
             # Validate action field
             action: Optional[str] = data.get('action')
             if not action:
@@ -317,28 +342,28 @@ class SMBHandler:
                     'status': 'error',
                     'message': 'Missing required field: action. Must be \'add\' or \'remove\''
                 }), 400
-            
+
             if action not in ['add', 'remove']:
                 return jsonify({
                     'status': 'error',
                     'message': 'Invalid action. Must be \'add\' or \'remove\''
                 }), 400
-            
+
             # Validate required fields
             server: Optional[str] = data.get('server')
             share: Optional[str] = data.get('share')
-            
+
             if not server or not share:
                 return jsonify({
                     'status': 'error',
                     'message': 'Missing required fields: action, server and share'
                 }), 400
-            
+
             if action == 'add':
                 return self._handle_add_mount(data, server, share)
             else:  # action == 'remove'
                 return self._handle_remove_mount(data, server, share)
-                
+
         except Exception as e:
             logger.error(f"Error managing SMB mount: {e}")
             logger.debug(traceback.format_exc())
@@ -347,7 +372,7 @@ class SMBHandler:
                 'message': 'Failed to process SMB share configuration',
                 'details': 'An internal server error occurred while processing the mount configuration'
             }), 500
-    
+
     def _handle_add_mount(self, data: Dict[str, Any], server: str, share: str) -> 'Union[Response, tuple[Response, int]]':
         """Helper method to handle adding a mount configuration"""
         # Get optional fields
@@ -356,9 +381,9 @@ class SMBHandler:
         password: Optional[str] = data.get('password')
         version: Optional[str] = data.get('version')
         options: Optional[str] = data.get('options')
-        
+
         logger.debug(f"Creating SMB mount configuration for {server}/{share}")
-        
+
         # Add mount configuration (but don't mount it)
         success, error_msg = add_mount_config(
             server=server,
@@ -369,11 +394,11 @@ class SMBHandler:
             version=version,
             options=options
         )
-        
+
         if success:
             # Determine the actual mountpoint used
             final_mountpoint = mountpoint or f"/data/{server}-{share}"
-            
+
             return jsonify({
                 'status': 'success',
                 'message': 'SMB share configuration created successfully',
@@ -402,14 +427,14 @@ class SMBHandler:
                     'error': 'configuration_save_failed',
                     'details': 'An internal server error occurred while saving the mount configuration'
                 }), 500
-    
+
     def _handle_remove_mount(self, data: Dict[str, Any], server: str, share: str) -> 'Union[Response, tuple[Response, int]]':
         """Helper method to handle removing a mount configuration"""
         logger.debug(f"Removing SMB mount configuration for {server}/{share}")
-        
+
         # Remove mount configuration (but don't unmount)
         success, mountpoint = remove_mount_config(server, share)
-        
+
         if success:
             return jsonify({
                 'status': 'success',
@@ -438,16 +463,17 @@ class SMBHandler:
         service_name = 'hifiberry-mpd-reconcile.service'
 
         try:
-            logger.debug(f"Starting {service_name} after SMB mount changes")
+            logger.debug("Starting %s after SMB mount changes", service_name)
             result = subprocess.run(
                 ['systemctl', 'start', service_name],
                 capture_output=True,
                 text=True,
-                timeout=30
+                timeout=30,
+                check=False
             )
 
             if result.returncode == 0:
-                logger.info(f"{service_name} started successfully")
+                logger.info("%s started successfully", service_name)
                 return {
                     'service': service_name,
                     'status': 'success',
@@ -489,25 +515,25 @@ class SMBHandler:
         """
         try:
             logger.debug("Processing samba mount-all request")
-            
+
             # Load previous mount state
             previous_state = load_mount_state()
-            
+
             # Get current mount configurations
             current_mounts = list_configured_mounts()
             current_state: Dict[str, str] = {}
-            
+
             # Build current state mapping
             for mount in current_mounts:
                 mount_key = get_mount_key(mount['server'], mount['share'])
                 current_state[mount_key] = mount['mountpoint']
-            
+
             # Find mounts that need to be removed (in previous state but not in current)
             mounts_to_remove: List[tuple[str, str]] = []
             for mount_key, mountpoint in previous_state.items():
                 if mount_key not in current_state:
                     mounts_to_remove.append((mount_key, mountpoint))
-            
+
             # Unmount shares that are no longer configured
             unmounted_shares: List[Dict[str, Any]] = []
             for mount_key, mountpoint in mounts_to_remove:
@@ -530,33 +556,34 @@ class SMBHandler:
                         'status': 'unmount_failed'
                     })
                     # Keep it in the state since it's still mounted
-            
+
             logger.debug("Restarting sambamount systemd service to mount all Samba shares")
-            
+
             # Restart the sambamount service
             result = subprocess.run(
                 ['systemctl', 'restart', 'sambamount.service'],
                 capture_output=True,
                 text=True,
-                timeout=30
+                timeout=30,
+                check=False
             )
-            
+
             if result.returncode == 0:
                 logger.info("sambamount.service restarted successfully")
-                
+
                 # Save the new state: current configurations + any failed unmounts
                 # Start with current configurations
                 final_state: Dict[str, str] = current_state.copy()
-                
+
                 # Add back any shares that failed to unmount (they're still mounted)
                 for mount_key, mountpoint in previous_state.items():
                     if mount_key not in current_state:
                         # This was a share we tried to remove but might have failed to unmount
                         # Check if it's still in the previous_state (wasn't successfully removed)
                         final_state[mount_key] = mountpoint
-                
+
                 save_mount_state(final_state)
-                
+
                 # Get the current mount configurations to show what should be mounted
                 try:
                     mount_list: List[Dict[str, Any]] = []
@@ -567,7 +594,7 @@ class SMBHandler:
                             'mountpoint': mount['mountpoint'],
                             'id': mount.get('id', '?')
                         })
-                    
+
                     response_data: Dict[str, Any] = {
                         'service': 'sambamount.service',
                         'action': 'restarted',
@@ -580,14 +607,14 @@ class SMBHandler:
                     response_data['mpd_reconcile'] = mpd_reconcile_result
                     if mpd_reconcile_result.get('status') != 'success':
                         response_data['warning'] = 'SMB mounts were applied, but MPD reconciliation failed'
-                    
+
                     # Add cleanup information if any shares were unmounted
                     if unmounted_shares:
                         response_data['cleanup'] = {
                             'unmounted_shares': unmounted_shares,
                             'count': len(unmounted_shares)
                         }
-                    
+
                     return jsonify({
                         'status': 'success',
                         'message': 'Samba mount service restarted successfully',
@@ -595,7 +622,7 @@ class SMBHandler:
                     })
                 except Exception as list_error:
                     logger.warning(f"Service restarted but failed to list configurations: {list_error}")
-                    
+
                     response_data = {
                         'service': 'sambamount.service',
                         'action': 'restarted',
@@ -606,14 +633,14 @@ class SMBHandler:
                     response_data['mpd_reconcile'] = mpd_reconcile_result
                     if mpd_reconcile_result.get('status') != 'success':
                         response_data['warning'] = 'SMB mounts were applied, but MPD reconciliation failed'
-                    
+
                     # Add cleanup information if any shares were unmounted
                     if unmounted_shares:
                         response_data['cleanup'] = {
                             'unmounted_shares': unmounted_shares,
                             'count': len(unmounted_shares)
                         }
-                    
+
                     return jsonify({
                         'status': 'success',
                         'message': 'Samba mount service restarted successfully',
@@ -622,12 +649,12 @@ class SMBHandler:
             else:
                 stderr_output = result.stderr.strip()
                 stdout_output = result.stdout.strip()
-                
+
                 logger.error(f"Failed to restart sambamount.service: {stderr_output}")
                 logger.error(f"systemctl restart return code: {result.returncode}")
                 if stdout_output:
                     logger.error(f"systemctl restart stdout: {stdout_output}")
-                
+
                 return jsonify({
                     'status': 'error',
                     'message': 'Failed to restart Samba mount service',
@@ -639,7 +666,7 @@ class SMBHandler:
                         'return_code': result.returncode
                     }
                 }), 500
-                
+
         except subprocess.TimeoutExpired:
             error_msg = "Timeout restarting sambamount.service after 30 seconds"
             logger.error(error_msg)
@@ -649,7 +676,7 @@ class SMBHandler:
                 'error': 'Service restart timeout',
                 'details': error_msg
             }), 500
-            
+
         except subprocess.SubprocessError as e:
             logger.error(f"Subprocess error restarting sambamount.service: {e}")
             return jsonify({
@@ -658,7 +685,7 @@ class SMBHandler:
                 'error': 'Subprocess error',
                 'details': 'An error occurred while restarting the service'
             }), 500
-            
+
         except Exception as e:
             logger.error(f"Error restarting sambamount service: {e}")
             logger.debug(traceback.format_exc())

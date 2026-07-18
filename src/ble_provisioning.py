@@ -34,6 +34,16 @@ except ImportError:
 
 from . import wifi, network
 
+try:
+    from ._version import __version__ as APP_VERSION
+except ImportError:
+    APP_VERSION = ""
+
+try:
+    from .pimodel import PiModel
+except ImportError:
+    PiModel = None  # type: ignore
+
 logger = logging.getLogger(__name__)
 
 # Custom GATT service UUID
@@ -78,27 +88,22 @@ class BLEProvisioningServer:
     def _get_device_identity(self) -> bytes:
         hostname = self._get_hostname()
         model: str = ""
-        version: str = ""
-        try:
-            from ._version import __version__
-            version = __version__
-        except Exception:
-            pass
-        try:
-            from .pimodel import PiModel
-            pi = PiModel()
-            # Access model attribute safely
-            model = getattr(pi, "model", None) or ""
-        except Exception:
-            pass
+        version: str = APP_VERSION
+        if PiModel is not None:
+            try:
+                pi = PiModel()
+                # Access model attribute safely
+                model = getattr(pi, "model", None) or ""
+            except (AttributeError, RuntimeError, OSError):
+                pass
         data: Dict[str, str] = {"hostname": hostname, "model": model, "version": version}
         return json.dumps(data, separators=(",", ":")).encode("utf-8")
 
     def _get_network_status(self) -> bytes:
         try:
             cfg: Dict[str, Any] = network.get_network_config()
-        except Exception as e:
-            logger.error(f"Error getting network config: {e}")
+        except (RuntimeError, OSError, ValueError) as e:
+            logger.error("Error getting network config: %s", e)
             cfg = {"hostname": self._get_hostname(), "interfaces": []}
 
         wifi_connected: bool = False
@@ -123,7 +128,7 @@ class BLEProvisioningServer:
                 conn = wifi.get_current_connection()
                 if conn:
                     wifi_ssid = conn.get("ssid", "")
-            except Exception:
+            except (RuntimeError, OSError, ValueError):
                 pass
 
         data: Dict[str, Any] = {
@@ -146,30 +151,30 @@ class BLEProvisioningServer:
     # GATT callbacks
     # ------------------------------------------------------------------
 
-    def _on_read(self, characteristic: Any, **kwargs: Any) -> bytearray:  # type: ignore
+    def _on_read(self, characteristic: Any, **_kwargs: Any) -> bytearray:  # type: ignore
         uuid = characteristic.uuid.lower()
-        logger.debug(f"Read request for {uuid}")
+        logger.debug("Read request for %s", uuid)
 
         if uuid == CHAR_DEVICE_IDENTITY:
             return bytearray(self._get_device_identity())
-        elif uuid == CHAR_NETWORK_STATUS:
+        if uuid == CHAR_NETWORK_STATUS:
             return bytearray(self._get_network_status())
-        elif uuid == CHAR_WIFI_SCAN_RESULTS:
+        if uuid == CHAR_WIFI_SCAN_RESULTS:
             return bytearray(self._get_scan_results_bytes())
-        elif uuid == CHAR_WIFI_CONNECT_STATUS:
+        if uuid == CHAR_WIFI_CONNECT_STATUS:
             return bytearray(self._get_connect_status_bytes())
 
         return bytearray(b"")
 
-    def _on_write(self, characteristic: Any, value: Any, **kwargs: Any) -> None:  # type: ignore
+    def _on_write(self, characteristic: Any, value: Any, **_kwargs: Any) -> None:  # type: ignore
         uuid = characteristic.uuid.lower()
-        logger.debug(f"Write request for {uuid}, value={value!r}")
+        logger.debug("Write request for %s, value=%r", uuid, value)
 
         if uuid == CHAR_WIFI_SCAN_TRIGGER:
             self._handle_scan_trigger(value)
-        elif uuid == CHAR_WIFI_CONNECT:
+        if uuid == CHAR_WIFI_CONNECT:
             self._handle_wifi_connect(value)
-        elif uuid == CHAR_BLE_CONTROL:
+        if uuid == CHAR_BLE_CONTROL:
             self._handle_ble_control(value)
 
     # ------------------------------------------------------------------
@@ -195,9 +200,9 @@ class BLEProvisioningServer:
                 }
                 for n in results[:MAX_SCAN_RESULTS]
             ]
-            logger.info(f"WiFi scan complete: {len(self._scan_results)} networks")
-        except Exception as e:
-            logger.error(f"WiFi scan failed: {e}")
+            logger.info("WiFi scan complete: %d networks", len(self._scan_results))
+        except (RuntimeError, OSError, ValueError) as e:
+            logger.error("WiFi scan failed: %s", e)
             self._scan_results = []
 
         # Update the characteristic value and notify
@@ -217,12 +222,12 @@ class BLEProvisioningServer:
             if not ssid:
                 logger.warning("WiFi connect: empty SSID")
                 return
-            logger.info(f"WiFi connect requested for SSID: {ssid}")
+            logger.info("WiFi connect requested for SSID: %s", ssid)
             self._connect_status = {"state": "connecting", "ssid": ssid, "error": ""}
             self._notify_connect_status()
             asyncio.ensure_future(self._do_wifi_connect(ssid, passphrase))
-        except Exception as e:
-            logger.error(f"Error parsing WiFi connect payload: {e}")
+        except (json.JSONDecodeError, UnicodeDecodeError, TypeError, ValueError) as e:
+            logger.error("Error parsing WiFi connect payload: %s", e)
             self._connect_status = {
                 "state": "failed",
                 "ssid": "",
@@ -242,21 +247,21 @@ class BLEProvisioningServer:
                     "ssid": ssid,
                     "error": "",
                 }
-                logger.info(f"WiFi connected to {ssid}")
+                logger.info("WiFi connected to %s", ssid)
             else:
                 self._connect_status = {
                     "state": "failed",
                     "ssid": ssid,
                     "error": "Connection failed",
                 }
-                logger.warning(f"WiFi connection to {ssid} failed")
-        except Exception as e:
+                logger.warning("WiFi connection to %s failed", ssid)
+        except (RuntimeError, OSError, ValueError) as e:
             self._connect_status = {
                 "state": "failed",
                 "ssid": ssid,
                 "error": str(e),
             }
-            logger.error(f"WiFi connection error: {e}")
+            logger.error("WiFi connection error: %s", e)
 
         self._notify_connect_status()
         # Also update network status characteristic
@@ -277,8 +282,8 @@ class BLEProvisioningServer:
                 self._shutdown_requested = True
                 if self.loop:
                     self.loop.call_soon_threadsafe(self.loop.stop)
-        except Exception as e:
-            logger.error(f"Error parsing BLE control payload: {e}")
+        except (json.JSONDecodeError, UnicodeDecodeError, TypeError, ValueError) as e:
+            logger.error("Error parsing BLE control payload: %s", e)
 
     def _notify_connect_status(self):
         """Push connect status notification."""
@@ -297,12 +302,12 @@ class BLEProvisioningServer:
         hostname = self._get_hostname()
         # Truncate to fit BLE advertising name limit (~29 bytes)
         adv_name = f"HiFiBerry-{hostname}"[:29]
-        logger.info(f"Starting BLE provisioning server as '{adv_name}'")
+        logger.info("Starting BLE provisioning server as '%s'", adv_name)
 
         self.server = BlessServer(name=adv_name, loop=asyncio.get_event_loop())  # type: ignore
         if self.server is None:
             raise RuntimeError("Failed to initialize BLE server")
-        
+
         self.server.read_request_func = self._on_read  # type: ignore
         self.server.write_request_func = self._on_write  # type: ignore
 
@@ -397,8 +402,8 @@ def has_network_connectivity() -> bool:
         for iface in interfaces:
             if iface.get("ipv4"):
                 return True
-    except Exception as e:
-        logger.error(f"Error checking network connectivity: {e}")
+    except (RuntimeError, OSError, ValueError) as e:
+        logger.error("Error checking network connectivity: %s", e)
     return False
 
 
@@ -407,7 +412,8 @@ def has_network_connectivity() -> bool:
 # ------------------------------------------------------------------
 
 
-def setup_logging(verbose: bool = False):
+def setup_logging(verbose: bool = False) -> None:
+    """Configure process-wide logging for CLI mode."""
     root = logging.getLogger()
     root.setLevel(logging.DEBUG if verbose else logging.INFO)
     for h in root.handlers[:]:
@@ -419,7 +425,8 @@ def setup_logging(verbose: bool = False):
     root.addHandler(handler)
 
 
-def main():
+def main() -> None:
+    """CLI entrypoint for BLE provisioning checks and server lifecycle."""
     parser = argparse.ArgumentParser(
         description="HiFiBerry BLE WiFi Provisioning"
     )
@@ -455,6 +462,7 @@ def main():
             ["systemctl", "stop", "ble-provisioning"],
             capture_output=True,
             timeout=10,
+            check=False,
         )
         sys.exit(0)
 
@@ -475,8 +483,8 @@ def main():
         try:
             loop.run_until_complete(provisioner.start())
             loop.run_forever()
-        except Exception as e:
-            logger.error(f"BLE server error: {e}")
+        except (RuntimeError, OSError) as e:
+            logger.error("BLE server error: %s", e)
         finally:
             loop.run_until_complete(provisioner.stop())
             loop.close()

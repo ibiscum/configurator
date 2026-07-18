@@ -17,6 +17,7 @@
   - [Filesystem Management](#filesystem-management)
   - [Script Management](#script-management)
 - [Configuration File](#configuration-file)
+- [Related Docs](#related-docs)
 - [Examples](#examples)
 - [Error Codes](#error-codes)
 
@@ -25,6 +26,13 @@
 The HiFiBerry Configuration API provides REST endpoints for managing configuration settings and system services in the HiFiBerry system. All responses are in JSON format with consistent structure.
 
 > **Note:** Replace localhost with your actual server address. The default port is 1081.
+
+## Related Docs
+
+- [Command and Server Flow](command-server-flow.md)
+- [asoundconf Command Flow](asoundconf-command-flow.md)
+- [Avahi Command Flow](avahi-command-flow.md)
+- [Bluetooth and BLE Command/Server Flow](bluetooth-command-server-flow.md)
 
 ## Endpoints
 
@@ -787,7 +795,7 @@ Create or remove SMB share configurations.
 Mount all configured Samba shares by restarting the sambamount systemd service.
 
 > **Note:** This endpoint restarts the sambamount.service which will mount all configured SMB shares. Restarting ensures a fresh mount operation and applies any new configurations. The service runs with proper permissions to make mounts visible system-wide.
-> 
+>
 > **Smart Cleanup:** The endpoint tracks previously mounted shares and automatically unmounts any shares that are no longer configured. This state is reset on system reboot to ensure clean startup.
 
 **Request Body:** None required

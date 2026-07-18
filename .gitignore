@@ -7,6 +7,8 @@ __pycache__/
 build/*
 dist/*
 .vscode/settings.json
+.venv/
+.pytest_cache/
 
 # Debian build artifacts
 debian/.debhelper/
