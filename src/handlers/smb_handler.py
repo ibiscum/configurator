@@ -401,7 +401,7 @@ class SMBHandler:
                     'status': 'error',
                     'message': 'Failed to save mount configuration',
                     'error': 'configuration_save_failed',
-                    'details': error_msg_str
+                    'details': 'An internal server error occurred while saving the mount configuration'
                 }), 500
     
     def _handle_remove_mount(self, data: Dict[str, Any], server: str, share: str) -> 'Union[Response, tuple[Response, int]]':
