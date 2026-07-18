@@ -128,6 +128,43 @@ def read_mount_config(secure: bool = False) -> List[Dict[str, str]]:
     logger.debug(f"Read {len(mounts)} mount configurations from configdb")
     return mounts
 
+
+def read_mount_config_for_display() -> List[Dict[str, str]]:
+    """
+    Read mount configurations from the config database for display / listing.
+
+    The password field is intentionally omitted so that this function
+    never introduces sensitive data into code paths that produce log or
+    print output.
+
+    Returns:
+        List of dictionaries containing non-sensitive mount fields only.
+    """
+    db = ConfigDB()
+    mounts: List[Dict[str, str]] = []
+    index = 1
+
+    while True:
+        prefix = f"smbmount.{index}"
+        server = db.get(f"{prefix}.server", None)
+        if not server:
+            break
+
+        mounts.append({
+            'id': index,
+            'server': server,
+            'share': db.get(f"{prefix}.share", ""),
+            'mountpoint': db.get(f"{prefix}.mountpoint", ""),
+            'user': db.get(f"{prefix}.user", ""),
+            'version': db.get(f"{prefix}.version", ""),
+            'options': db.get(f"{prefix}.options", ""),
+        })
+
+        index += 1
+
+    logger.debug(f"Read {len(mounts)} mount configurations from configdb (display mode)")
+    return mounts
+
 def write_mount_config(mounts: List[Dict[str, str]]) -> bool:
     """
     Write the mount configurations to the config database.
@@ -732,16 +769,17 @@ def list_configured_mounts() -> List[Dict[str, str]]:
     List all mounts from the configuration database.
     
     Returns:
-        List of mount configurations with mount status included
+        List of mount configurations with mount status included.
+        Passwords are never included in the returned dicts.
     """
-    # Read mount configurations
-    mounts = read_mount_config()
+    # Use the display-only reader so passwords never enter this call path
+    mounts = read_mount_config_for_display()
     
     if not mounts:
         logger.debug("No mount configurations found in configdb")
         return mounts
     
-    # Check mount status for each mount
+    # Annotate each mount with its current mount status
     for mount in mounts:
         mountpoint = mount.get('mountpoint', '')
         mount['mounted'] = is_mounted(mountpoint) if mountpoint else False
@@ -867,7 +905,6 @@ def main():
                 mountpoint = mount['mountpoint']
                 user = mount['user'] if 'user' in mount and mount['user'] else ''
                 version = mount['version'] if 'version' in mount and mount['version'] else 'Auto'
-                has_password = bool('password' in mount and mount['password'])
                 mounted = mount.get('mounted', False)
                 
                 # Mount status indicator
@@ -876,8 +913,7 @@ def main():
 
                 # Format: [ID] [STATUS] //user@server/share -> mountpoint (SMB Version)
                 user_prefix = f"{user}@" if user else ""
-                password_suffix = " (Password: set)" if has_password else ""
-                print(f"[{mount_id}] [{status_icon} {status_text}] //{user_prefix}{server}/{share} -> {mountpoint} ({version}){password_suffix}")
+                print(f"[{mount_id}] [{status_icon} {status_text}] //{user_prefix}{server}/{share} -> {mountpoint} ({version})")
         else:
             logger.warning("No mount configurations found in configdb")
     
