@@ -65,8 +65,7 @@ class SoundcardHandler:
             logger.error("Error listing soundcards: %s", e)
             return jsonify({
                 "status": "error",
-                "message": "Failed to list soundcards",
-                "error": str(e)
+                "message": "Failed to list soundcards"
             }), 500  # type: ignore[return-value]
 
     def handle_set_dtoverlay(self) -> 'Union[Response, tuple[Response, int]]':
@@ -154,16 +153,14 @@ class SoundcardHandler:
             logger.error("Config file not found: %s", e)
             return jsonify({
                 "status": "error",
-                "message": "Config file not found",
-                "error": str(e)
+                "message": "Config file not found"
             }), 404  # type: ignore[return-value]
 
         except (OSError, AttributeError, ValueError) as e:
             logger.error("Error setting dtoverlay: %s", e)
             return jsonify({
                 "status": "error",
-                "message": "Failed to set dtoverlay",
-                "error": str(e)
+                "message": "Failed to set dtoverlay"
             }), 500  # type: ignore[return-value]
 
     def handle_detection_status(self) -> 'Union[Response, tuple[Response, int]]':
@@ -207,8 +204,7 @@ class SoundcardHandler:
             logger.error("Error checking detection status: %s", e)
             return jsonify({
                 "status": "error",
-                "message": "Failed to check detection status",
-                "error": str(e)
+                "message": "Failed to check detection status"
             }), 500  # type: ignore[return-value]
 
     def handle_enable_detection(self) -> 'Union[Response, tuple[Response, int]]':
@@ -263,8 +259,7 @@ class SoundcardHandler:
             logger.error("Error enabling detection: %s", e)
             return jsonify({
                 "status": "error",
-                "message": "Failed to enable sound card detection",
-                "error": str(e)
+                "message": "Failed to enable sound card detection"
             }), 500  # type: ignore[return-value]
 
     def handle_disable_detection(self) -> 'Union[Response, tuple[Response, int]]':
@@ -375,8 +370,7 @@ class SoundcardHandler:
             logger.error("Error disabling detection: %s", e)
             return jsonify({
                 "status": "error",
-                "message": "Failed to disable sound card detection",
-                "error": str(e)
+                "message": "Failed to disable sound card detection"
             }), 500  # type: ignore[return-value]
 
     def handle_detect_live_soundcard(self) -> 'Union[Response, tuple[Response, int]]':
@@ -417,7 +411,6 @@ class SoundcardHandler:
             return jsonify({
                 "status": "error",
                 "message": "Failed to run live sound card detection",
-                "error": str(e),
             }), 500  # type: ignore[return-value]
 
     def handle_detect_soundcard(self) -> 'Union[Response, tuple[Response, int]]':
@@ -474,6 +467,5 @@ class SoundcardHandler:
             logger.error("Error detecting soundcard: %s", e)
             return jsonify({
                 "status": "error",
-                "message": "Failed to detect sound card",
-                "error": str(e)
+                "message": "Failed to detect sound card"
             }), 500
