@@ -20,24 +20,30 @@ import signal
 import subprocess
 import sys
 import argparse
+import importlib
 from typing import Any, Dict, List, Optional
 
 try:
-    from bless.backends.attribute import GATTAttributePermissions
-    from bless.backends.characteristic import GATTCharacteristicProperties
-    from bless.backends.bluezdbus.server import BlessServer  # type: ignore
+    _attr_module = importlib.import_module("bless.backends.attribute")
+    _char_module = importlib.import_module("bless.backends.characteristic")
+    _server_module = importlib.import_module("bless.backends.bluezdbus.server")
+
+    # Use dynamic attribute lookup so external library typing does not leak Unknown.
+    GATTAttributePermissions: Any = getattr(_attr_module, "GATTAttributePermissions")
+    GATTCharacteristicProperties: Any = getattr(_char_module, "GATTCharacteristicProperties")
+    BlessServer: Any = getattr(_server_module, "BlessServer")
 except ImportError:
     # Fallback for older bless versions or when types are unavailable
-    GATTAttributePermissions = Any  # type: ignore
-    GATTCharacteristicProperties = Any  # type: ignore
-    BlessServer = Any  # type: ignore
+    GATTAttributePermissions: Any = Any
+    GATTCharacteristicProperties: Any = Any
+    BlessServer: Any = Any
 
 from . import wifi, network
 
 try:
-    from ._version import __version__ as APP_VERSION
+    from ._version import __version__ as app_version
 except ImportError:
-    APP_VERSION = ""
+    app_version = ""
 
 try:
     from .pimodel import PiModel
@@ -88,7 +94,7 @@ class BLEProvisioningServer:
     def _get_device_identity(self) -> bytes:
         hostname = self._get_hostname()
         model: str = ""
-        version: str = APP_VERSION
+        version: str = app_version
         if PiModel is not None:
             try:
                 pi = PiModel()

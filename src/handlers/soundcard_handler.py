@@ -7,7 +7,6 @@ Provides API endpoints for managing sound card configurations.
 
 import logging
 from typing import Dict, List, Any, Optional, Union, cast, TYPE_CHECKING
-from flask import request, jsonify
 from ..soundcard import SOUND_CARD_DEFINITIONS  # type: ignore[import-untyped]
 from ..soundcard_detector import SoundcardDetector  # type: ignore[import-untyped]
 from ..soundcard import Soundcard  # type: ignore[import-untyped]
@@ -15,7 +14,32 @@ from ..configtxt import ConfigTxt
 from ..configdb import ConfigDB
 
 if TYPE_CHECKING:
-    from flask import Response
+    from flask import Response  # pyright: ignore[reportMissingModuleSource]
+else:
+    Response = Any
+
+try:
+    from flask import request as _request, jsonify as _jsonify  # pyright: ignore[reportUnknownVariableType, reportMissingModuleSource]
+    request = cast(Any, _request)
+    jsonify = cast(Any, _jsonify)
+except ImportError:
+    # Flask is optional - only needed when running with Flask
+    def jsonify(*args: Any, **kwargs: Any) -> Any:  # type: ignore
+        """Stub jsonify when Flask is not installed."""
+        raise RuntimeError("Flask is not installed")
+
+    def _stub_get_json() -> Dict[str, Any]:
+        """Return empty JSON payload for request stub."""
+        return {}
+
+    request = cast(Any, type(
+        "RequestStub",
+        (),
+        {
+            "is_json": False,
+            "get_json": staticmethod(_stub_get_json),
+        },
+    )())
 
 logger = logging.getLogger(__name__)
 

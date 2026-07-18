@@ -9,15 +9,16 @@ systemd service.
 
 import logging
 import subprocess
-from typing import Union, Tuple, TYPE_CHECKING, Any
+from typing import Union, Tuple, TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
-    from flask import Response
+    from flask import Response  # pyright: ignore[reportMissingModuleSource]
 else:
     Response = Any
 
 try:
-    from flask import jsonify
+    from flask import jsonify as _jsonify  # pyright: ignore[reportUnknownVariableType, reportMissingModuleSource]
+    jsonify = cast(Any, _jsonify)
 except ImportError:
     # Flask is optional - only needed when running with Flask
     def jsonify(*args: Any, **kwargs: Any) -> Any:  # type: ignore

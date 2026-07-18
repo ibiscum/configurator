@@ -122,9 +122,9 @@ def set_bluetooth_settings(settings: Dict[str, Any]) -> Dict[str, Any]:
 async def get_paired_devices() -> List[Dict[str, Any]]:
     """Returns a list of paired bluetooth devices using dbus-fast."""
     try:
-        bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
-        introspection = await bus.introspect("org.bluez", "/")  # type: ignore
-        obj = bus.get_proxy_object("org.bluez", "/", introspection)
+        bus: Any = await MessageBus(bus_type=BusType.SYSTEM).connect()  # pyright: ignore[reportUnknownVariableType]
+        introspection: Any = await bus.introspect("org.bluez", "/")  # pyright: ignore[reportUnknownVariableType]
+        obj: Any = bus.get_proxy_object("org.bluez", "/", introspection)  # pyright: ignore[reportUnknownVariableType]
 
         # Get the ObjectManager interface
         om = obj.get_interface("org.freedesktop.DBus.ObjectManager")  # type: ignore
@@ -164,9 +164,9 @@ async def unpair_device(address: str) -> Dict[str, str]:
     address = address.upper()
 
     try:
-        bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
-        introspection = await bus.introspect("org.bluez", "/")
-        obj = bus.get_proxy_object("org.bluez", "/", introspection)
+        bus: Any = await MessageBus(bus_type=BusType.SYSTEM).connect()  # pyright: ignore[reportUnknownVariableType]
+        introspection: Any = await bus.introspect("org.bluez", "/")  # pyright: ignore[reportUnknownVariableType]
+        obj: Any = bus.get_proxy_object("org.bluez", "/", introspection)  # pyright: ignore[reportUnknownVariableType]
 
         # Get the ObjectManager interface
         om = obj.get_interface("org.freedesktop.DBus.ObjectManager")  # type: ignore
@@ -180,8 +180,8 @@ async def unpair_device(address: str) -> Dict[str, str]:
                 if device_address.upper() == address:  # type: ignore
                     # Find the adapter this device belongs to
                     adapter_path = "/".join(path.split("/")[:-1])  # type: ignore
-                    adapter_introspection = await bus.introspect("org.bluez", adapter_path)
-                    adapter_obj = bus.get_proxy_object("org.bluez", adapter_path, adapter_introspection)
+                    adapter_introspection: Any = await bus.introspect("org.bluez", adapter_path)  # pyright: ignore[reportUnknownVariableType]
+                    adapter_obj: Any = bus.get_proxy_object("org.bluez", adapter_path, adapter_introspection)  # pyright: ignore[reportUnknownVariableType]
                     adapter = adapter_obj.get_interface("org.bluez.Adapter1")  # type: ignore
 
                     # Remove the device
