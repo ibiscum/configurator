@@ -345,7 +345,6 @@ class SMBHandler:
             return jsonify({
                 'status': 'error',
                 'message': 'Failed to process SMB share configuration',
-                'error': str(e),
                 'details': 'An internal server error occurred while processing the mount configuration'
             }), 500
     
