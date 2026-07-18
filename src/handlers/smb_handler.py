@@ -479,8 +479,7 @@ class SMBHandler:
             return {
                 'service': service_name,
                 'status': 'error',
-                'message': 'Failed to trigger MPD reconciliation',
-                'details': str(e)
+                'message': 'Failed to trigger MPD reconciliation'
             }
 
     def handle_mount_all_samba(self) -> 'Union[Response, tuple[Response, int]]':
@@ -653,13 +652,12 @@ class SMBHandler:
             }), 500
             
         except subprocess.SubprocessError as e:
-            error_msg = f"Subprocess error restarting sambamount.service: {e}"
-            logger.error(error_msg)
+            logger.error(f"Subprocess error restarting sambamount.service: {e}")
             return jsonify({
                 'status': 'error',
                 'message': 'Failed to restart Samba mount service',
                 'error': 'Subprocess error',
-                'details': str(e)
+                'details': 'An error occurred while restarting the service'
             }), 500
             
         except Exception as e:
@@ -668,6 +666,6 @@ class SMBHandler:
             return jsonify({
                 'status': 'error',
                 'message': 'Failed to restart Samba mount service',
-                'error': str(e),
+                'error': 'An internal error occurred',
                 'details': 'An internal server error occurred while starting the service'
             }), 500
