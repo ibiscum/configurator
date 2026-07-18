@@ -58,7 +58,7 @@ class BLEProvisioningHandler:
             logger.error("Error checking BLE provisioning status: %s", e)
             response = jsonify({
                 "status": "error",
-                "message": str(e),
+                "message": "An internal error has occurred",
             })
             response.status_code = 500
             return response
@@ -111,7 +111,7 @@ class BLEProvisioningHandler:
             logger.error("Error starting BLE provisioning: %s", e)
             return jsonify({
                 "status": "error",
-                "message": str(e),
+                "message": "An internal error has occurred",
             }), 500
 
     def handle_stop(self) -> Union["Response", Tuple["Response", int]]:
@@ -153,5 +153,5 @@ class BLEProvisioningHandler:
             logger.error("Error stopping BLE provisioning: %s", e)
             return jsonify({
                 "status": "error",
-                "message": str(e),
+                "message": "An internal error has occurred",
             }), 500
