@@ -13,7 +13,7 @@ Tests cover:
 
 from unittest.mock import patch, MagicMock
 
-from src.soundcard import (
+from src.configurator.soundcard import (
     Soundcard,
     SOUND_CARD_DEFINITIONS,
     UNKNOWN_CARD_NAME,

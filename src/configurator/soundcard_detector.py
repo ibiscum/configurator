@@ -11,10 +11,10 @@ try:
     ARGCOMPLETE_AVAILABLE = True
 except ImportError:
     ARGCOMPLETE_AVAILABLE = False
-from src.configtxt import ConfigTxt
-from src.hattools import get_hat_info  # Import the get_hat_info module
-from src.dsptoolkit import detect_dsp
-from src.configdb import ConfigDB
+from src.configurator.configtxt import ConfigTxt
+from src.configurator.hattools import get_hat_info  # Import the get_hat_info module
+from src.configurator.dsptoolkit import detect_dsp
+from src.configurator.configdb import ConfigDB
 
 # Constants
 HIFIBERRY_CARD_COMMENT_PREFIX = "# HiFiBerry card:"
@@ -39,7 +39,7 @@ SOUND_CARD_VALIDATION_TESTS = {
 def _validate_dsp_card():
     """
     Validate that a DSP card actually has a functioning DSP
-    
+
     Returns:
         bool: True if DSP is detected, False otherwise
     """
@@ -68,7 +68,7 @@ class SoundcardDetector:
         self.hat_attempts = hat_attempts
         self.verbose = verbose
         self.include_pcm5102 = include_pcm5102
-        
+
         # Setup HiFiBerry logging if requested
         if self.hifiberry_log_file:
             self._setup_hifiberry_logger()
@@ -77,20 +77,20 @@ class SoundcardDetector:
         """Setup a separate logger for HiFiBerry-specific events"""
         self.hifiberry_logger = logging.getLogger('hifiberry_events')
         self.hifiberry_logger.setLevel(logging.INFO)
-        
+
         # Create file handler
         handler = logging.FileHandler(self.hifiberry_log_file)
         handler.setLevel(logging.INFO)
-        
+
         # Create formatter with timestamp
-        formatter = logging.Formatter('%(asctime)s - %(message)s', 
+        formatter = logging.Formatter('%(asctime)s - %(message)s',
                                     datefmt='%Y-%m-%d %H:%M:%S')
         handler.setFormatter(formatter)
-        
+
         # Add handler to logger (avoid duplicates)
         if not self.hifiberry_logger.handlers:
             self.hifiberry_logger.addHandler(handler)
-            
+
         # Prevent propagation to root logger to avoid duplicate messages
         self.hifiberry_logger.propagate = False
 
@@ -110,47 +110,47 @@ class SoundcardDetector:
     def detect_from_config_txt_comment(self):
         """
         Parse config.txt and return the card name from HiFiBerry comments
-        
+
         Looks for lines like "# HiFiBerry card: DAC+ DSP" and extracts the card name
-        
+
         Returns:
             str: Card name if found in comment, None if no comment found
         """
         logging.info("Detecting card from config.txt comments...")
-        
+
         # Read all lines from config.txt
         for line in self.config.lines:
             stripped_line = line.strip()
-            
+
             # Look for HiFiBerry card comment lines
             if stripped_line.startswith(HIFIBERRY_CARD_COMMENT_PREFIX):
                 # Extract the card name after the colon
                 try:
                     # Split on the comment prefix and get the part after it
                     card_name = stripped_line.split(HIFIBERRY_CARD_COMMENT_PREFIX, 1)[1].strip()
-                    
+
                     if card_name:
                         logging.info(f"Found card name in config.txt comment: {card_name}")
                         return card_name
                     else:
                         logging.warning("Found HiFiBerry comment but card name is empty")
-                        
+
                 except IndexError:
                     logging.warning(f"Malformed HiFiBerry comment line: {stripped_line}")
                     continue
-        
+
         logging.info("No HiFiBerry card comment found in config.txt")
         return None
 
     def _add_card_comment_before_overlay(self, overlay_name):
         """
         Add HiFiBerry card comment directly before the specified overlay line
-        
+
         Args:
             overlay_name: The full overlay name (e.g., "hifiberry-dacplus-std")
         """
         overlay_line = f"dtoverlay={overlay_name}"
-        
+
         # Find the overlay line and insert comment before it
         for i, line in enumerate(self.config.lines):
             if line.strip() == overlay_line:
@@ -159,7 +159,7 @@ class SoundcardDetector:
                 self.config.lines.insert(i, comment_line)
                 logging.debug(f"Added card comment before overlay at line {i + 1}")
                 return
-        
+
         # If overlay line not found, log warning
         logging.warning(f"Could not find overlay line '{overlay_line}' to add comment before it")
 
@@ -201,12 +201,12 @@ class SoundcardDetector:
     def _get_card_name(self, overlay, hat_product=None, no_hat_only=False):
         """
         Get the appropriate card name, prioritizing HAT info over overlay mapping
-        
+
         Args:
             overlay: Overlay name (e.g., "dacplusadcpro")
             hat_product: HAT product name from EEPROM (e.g., "DAC+ ADC Pro")
             no_hat_only: If True, prefer cards without hat_name when using overlay mapping
-            
+
         Returns:
             Card name - HAT product name if available, otherwise overlay mapping result
         """
@@ -216,7 +216,7 @@ class SoundcardDetector:
         if hat_product and hat_product.strip():
             logging.info(f"Using HAT product name directly: {hat_product}")
             return hat_product
-        
+
         # Fall back to overlay mapping if no HAT info
         logging.info(f"No HAT product info, using overlay mapping for: {overlay}")
         return self._overlay_to_card_name(overlay, no_hat_only=no_hat_only)
@@ -224,25 +224,25 @@ class SoundcardDetector:
     def _overlay_to_card_name(self, overlay, no_hat_only=False):
         """
         Map overlay name to proper card name(s) from SOUND_CARD_DEFINITIONS
-        
+
         Args:
             overlay: Overlay name (e.g., "dacplusdsp")
             no_hat_only: If True, prefer cards without hat_name, but fall back to HAT cards if none found
-            
+
         Returns:
             String with all matching card names separated by "/" if multiple cards use the same overlay,
             or single card name if only one match, or overlay name if not found
         """
         # Import here to avoid circular imports
-        from src.soundcard import SOUND_CARD_DEFINITIONS
-        
+        from src.configurator.soundcard import SOUND_CARD_DEFINITIONS
+
         # Handle overlay names with parameters (e.g., "amp100,automute")
         base_overlay = overlay.split(',')[0] if ',' in overlay else overlay
-        
+
         # Look through all card definitions to find matching dtoverlay
         all_matching_cards = []
         no_hat_cards = []
-        
+
         for card_name, attributes in SOUND_CARD_DEFINITIONS.items():
             dtoverlay = attributes.get("dtoverlay", "")
             if dtoverlay:
@@ -251,12 +251,12 @@ class SoundcardDetector:
                     overlay_base = dtoverlay.replace("hifiberry-", "").split(',')[0]
                     if overlay_base == base_overlay:
                         all_matching_cards.append(card_name)
-                        
+
                         # Check if this card has no hat_name
                         hat_name = attributes.get("hat_name")
                         if hat_name is None:
                             no_hat_cards.append(card_name)
-        
+
         # Determine which cards to use
         if no_hat_only:
             if no_hat_cards:
@@ -271,7 +271,7 @@ class SoundcardDetector:
             # Use all matching cards
             matching_cards = all_matching_cards
             filter_info = ""
-        
+
         if matching_cards:
             # Return all matching cards separated by "/"
             result = "/".join(matching_cards)
@@ -333,22 +333,22 @@ class SoundcardDetector:
                     return
             except Exception as e:
                 logging.debug(f"Could not read soundcard from config.txt comment: {str(e)}")
-        
+
         # Check if HAT EEPROM has valid info with retry
         hat_info = None
         hat_card = None
         has_hat_info = False
-        
+
         if self.verbose:
             logging.info(f"Step 1: Attempting HAT EEPROM detection (up to {self.hat_attempts} attempts)...")
-        
+
         # Retry HAT detection up to specified number of times with delay (for boot-time reliability)
         for attempt in range(self.hat_attempts):
             try:
                 hat_info = get_hat_info(verbose=True)  # Enable verbose for detailed error info
                 hat_card = hat_info.get("product")
                 has_hat_info = hat_card is not None
-                
+
                 if has_hat_info:
                     logging.info(f"HAT detection successful on attempt {attempt + 1}")
                     self._log_hifiberry_event(f"HAT EEPROM read successful on attempt {attempt + 1}: {hat_card}")
@@ -359,17 +359,17 @@ class SoundcardDetector:
                         reason = f"HAT info: vendor={hat_info.get('vendor')}, product={hat_info.get('product')}, uuid={hat_info.get('uuid')}"
                     logging.warning(f"HAT detection attempt {attempt + 1} failed: {reason}")
                     self._log_hifiberry_event(f"HAT detection attempt {attempt + 1} failed: {reason}")
-                    
+
             except Exception as e:
                 error_reason = f"HAT detection exception: {str(e)}"
                 logging.warning(f"HAT detection attempt {attempt + 1} failed: {error_reason}")
                 self._log_hifiberry_event(f"HAT detection attempt {attempt + 1} failed: {error_reason}")
                 hat_info = {"vendor": None, "product": None, "uuid": None}
-                
+
             if attempt < self.hat_attempts - 1:  # Don't sleep on the last attempt
                 logging.debug("Retrying HAT detection in 1 second...")
                 time.sleep(1)
-        
+
         # Final status
         if not has_hat_info:
             final_reason = "All HAT detection attempts failed"
@@ -377,7 +377,7 @@ class SoundcardDetector:
             self._log_hifiberry_event(final_reason)
             if self.verbose:
                 logging.info("HAT EEPROM detection: FAILED - proceeding to next method")
-        
+
         # Try HAT info detection first
         logging.info(f"Retrieved HAT info: {hat_info}")
         detected_overlay = self._map_hat_to_overlay(hat_card)
@@ -404,7 +404,7 @@ class SoundcardDetector:
             else:
                 detected_overlay = i2c_result
                 detected_card_name = None
-                
+
             if self._validate_detected_card(detected_overlay):
                 self.detected_overlay = detected_overlay
                 if detected_card_name:
@@ -548,7 +548,7 @@ class SoundcardDetector:
 
         # Lazy import: keep the configurator's import chain unchanged for
         # callers that never hit this branch.
-        from src.soundcard import SOUND_CARD_DEFINITIONS  # type: ignore
+        from src.configurator.soundcard import SOUND_CARD_DEFINITIONS  # type: ignore
 
         # Check hard-coded factory-firmware checksums first (firmwares we
         # recognise but don't ship as a bundled profile XML).
@@ -621,7 +621,7 @@ class SoundcardDetector:
         Returns the base overlay name (e.g. "adc", the same form
         ``_map_aplay_to_overlay`` returns) or None if no input card matches.
         """
-        from src.soundcard import SOUND_CARD_DEFINITIONS
+        from src.configurator.soundcard import SOUND_CARD_DEFINITIONS
 
         output = self._run_command("arecord -l")
         if not output:
@@ -643,15 +643,15 @@ class SoundcardDetector:
     def _map_aplay_to_overlay(self, aplay_output):
         """
         Map aplay output to sound card overlay name
-        
+
         Args:
             aplay_output: Raw aplay -l output line
-            
+
         Returns:
             Sound card overlay name or None if not recognized
         """
         logging.info(f"Mapping aplay output: {aplay_output}")
-        
+
         # Common patterns in aplay output for HiFiBerry cards
         # Order matters! Check more specific (longer) patterns first to avoid false matches
         aplay_patterns = [
@@ -669,7 +669,7 @@ class SoundcardDetector:
             ("snd_rpi_hifiberry_dac", "dac"),
             ("pcm5102a-hifi", "dac"),
         ]
-        
+
         # Check each pattern against the aplay output (case insensitive)
         # Patterns are ordered from most specific to least specific
         aplay_lower = aplay_output.lower()
@@ -677,7 +677,7 @@ class SoundcardDetector:
             if pattern in aplay_lower:
                 logging.info(f"Matched pattern '{pattern}' -> overlay '{overlay}'")
                 return overlay
-        
+
         # If no specific pattern matches, try to extract generic info
         if "dacplusdsp" in aplay_lower or "dsp" in aplay_lower:
             logging.info("Detected DSP-related card from aplay output")
@@ -697,7 +697,7 @@ class SoundcardDetector:
         elif "amp" in aplay_lower:
             logging.info("Detected Amp card from aplay output")
             return "amp"
-        
+
         logging.warning(f"Could not map aplay output to known sound card: {aplay_output}")
         return None
 
@@ -760,7 +760,7 @@ class SoundcardDetector:
     def _probe_dsp(self):
         """
         Probe for DSP hardware as a fallback detection method
-        
+
         Returns:
             Sound card overlay name if DSP detected, None otherwise
         """
@@ -770,7 +770,7 @@ class SoundcardDetector:
             if dsp_info and dsp_info.get("status") == "detected":
                 detected_dsp = dsp_info.get("detected_dsp", "")
                 logging.info(f"Detected DSP: {detected_dsp}")
-                
+
                 # Check if it's an ADAU14xx DSP (DAC+DSP)
                 if "ADAU14" in detected_dsp:
                     logging.info("ADAU14xx DSP detected, identifying as DAC+DSP")
@@ -788,16 +788,16 @@ class SoundcardDetector:
     def _validate_detected_card(self, card_overlay):
         """
         Apply additional validation tests to the detected sound card
-        
+
         Args:
             card_overlay: The detected sound card overlay name
-            
+
         Returns:
             bool: True if validation passes, False otherwise
         """
         if not card_overlay:
             return False
-            
+
         # Check if there's a validation test for this card type
         validation_test = SOUND_CARD_VALIDATION_TESTS.get(card_overlay)
         if validation_test:
@@ -825,13 +825,13 @@ class SoundcardDetector:
 
         # Check if detection is disabled in config.txt (unless --force is used)
         if not force and self.config.is_detection_disabled():
-            from src.configtxt import HIFIBERRY_DETECTION_DISABLED
+            from src.configurator.configtxt import HIFIBERRY_DETECTION_DISABLED
             logging.info(f"Detection is disabled in config.txt ({HIFIBERRY_DETECTION_DISABLED}). Use --force to override.")
             return
 
         # Check if the same overlay is already configured
         expected_overlay = f"hifiberry-{self.detected_overlay}"
-        
+
         # Check current overlays in config.txt
         current_hifiberry_overlays = []
         for line in self.config.lines:
@@ -840,18 +840,18 @@ class SoundcardDetector:
                 # Extract the overlay name
                 overlay_part = stripped_line.replace("dtoverlay=", "")
                 current_hifiberry_overlays.append(overlay_part)
-        
+
         # Check if the expected overlay is already present
         overlay_already_configured = expected_overlay in current_hifiberry_overlays
-        
+
         if overlay_already_configured:
             logging.info(f"Card {self.detected_card} is already configured with overlay {expected_overlay}")
-            
+
             # Still update the comment even if overlay is already configured
             self._remove_hifiberry_comments()
             self._add_card_comment_before_overlay(expected_overlay)
             self.config.save()
-            
+
             logging.info("Updated HiFiBerry card comment in config.txt")
             config_changed = False
         else:
@@ -866,7 +866,7 @@ class SoundcardDetector:
             logging.info(f"Configuring card: {self.detected_card} (overlay: {self.detected_overlay})")
             self.config.remove_hifiberry_overlays()
             self._remove_hifiberry_comments()
-            
+
             # Enable overlay first, then add comment before it
             self.config.enable_overlay(expected_overlay)
             self._add_card_comment_before_overlay(expected_overlay)
@@ -876,17 +876,17 @@ class SoundcardDetector:
 
             self.config.save()
             config_changed = True
-            
+
             # Log overlay configuration to HiFiBerry log
             self._log_hifiberry_event(f"Overlay written to config.txt: {expected_overlay}")
-            
+
             with open(self.reboot_file, "w") as reboot_file:
                 reboot_file.write(f"Configuring {self.detected_card} requires a reboot.\n")
-        
+
         # Load overlay directly if requested
         if load_overlay:
             self._load_overlay_directly(expected_overlay)
-            
+
         # Reboot if config.txt was changed and reboot_on_change is True
         if config_changed and reboot_on_change:
             logging.info("Config.txt was changed, rebooting system...")
@@ -901,7 +901,7 @@ class SoundcardDetector:
     def _load_overlay_directly(self, overlay_name):
         """
         Load the device tree overlay directly using dtoverlay command
-        
+
         Args:
             overlay_name: Full overlay name (e.g., "hifiberry-dacplus-std")
         """
@@ -911,7 +911,7 @@ class SoundcardDetector:
                 dtoverlay_name = overlay_name.replace("hifiberry-", "")
             else:
                 dtoverlay_name = overlay_name
-            
+
             # Handle overlay parameters (e.g., "amp100,automute" -> "amp100 automute")
             if "," in dtoverlay_name:
                 parts = dtoverlay_name.split(",")
@@ -920,22 +920,22 @@ class SoundcardDetector:
                 cmd = f"dtoverlay {dtoverlay_name} {params}"
             else:
                 cmd = f"dtoverlay {dtoverlay_name}"
-            
+
             logging.info(f"Loading overlay directly: {cmd}")
             result = self._run_command(cmd)
-            
+
             if result == "" or "dtoverlay" in result.lower():
                 # dtoverlay typically doesn't output anything on success
                 logging.info(f"Successfully loaded overlay: {dtoverlay_name}")
             else:
                 logging.warning(f"dtoverlay command output: {result}")
-                
+
         except Exception as e:
             logging.error(f"Failed to load overlay {overlay_name}: {str(e)}")
 
     def detect_and_configure(self, store=False, fallback_dac=False, load_overlay=False, reboot_on_change=False, force=False):
         self.detect_card()
-        
+
         # If no card detected and fallback_dac is True, assume DAC+ Light
         if not self.detected_card and fallback_dac:
             logging.info("No card detected, assuming DAC+ Light as fallback")
@@ -943,7 +943,7 @@ class SoundcardDetector:
             self.detected_card = "DAC+ Light"  # Set directly to avoid mapping confusion
             logging.info(f"Fallback card: {self.detected_card} (overlay: {self.detected_overlay})")
             self._log_hifiberry_event(f"Detected sound card: {self.detected_card} (fallback)")
-        
+
         if store:
             self.configure_card(load_overlay=load_overlay, reboot_on_change=reboot_on_change, force=force)
         else:
@@ -966,10 +966,10 @@ def main():
     parser.add_argument("--logfile", type=str, help="Log HiFiBerry events to specified file (with timestamps)")
     parser.add_argument("--force", action="store_true", help="Force configuration even if HiFiBerry detection is disabled in config.txt")
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output showing each detection step")
-    
+
     if ARGCOMPLETE_AVAILABLE:
         argcomplete.autocomplete(parser)
-    
+
     args = parser.parse_args()
 
     # Set logging level based on verbose flag
@@ -977,8 +977,8 @@ def main():
 
     detector = SoundcardDetector(hifiberry_log_file=args.logfile, verbose=args.verbose)
     detector.detect_and_configure(
-        store=args.store, 
-        fallback_dac=getattr(args, 'fallback_dac'), 
+        store=args.store,
+        fallback_dac=getattr(args, 'fallback_dac'),
         load_overlay=args.dtoverlay,
         reboot_on_change=args.reboot,
         force=args.force

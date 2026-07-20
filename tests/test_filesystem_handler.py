@@ -36,7 +36,7 @@ flask_mock.request = MagicMock()
 flask_mock.Response = MockResponse
 sys.modules["flask"] = flask_mock
 
-from src.handlers.filesystem_handler import FilesystemHandler  # pylint: disable=wrong-import-position  # noqa: E402
+from src.configurator.handlers.filesystem_handler import FilesystemHandler  # pylint: disable=wrong-import-position  # noqa: E402
 
 
 class TestFilesystemHandlerConfigLoading(unittest.TestCase):

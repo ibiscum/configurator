@@ -28,10 +28,10 @@ class TestConfigFileManager:
         """Test that ConfigFileManager creates config file if it doesn't exist."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "bluetooth.conf"
-            
+
             with patch("src.bluetooth.ConfigFileManager.config_path", config_path):
-                from src.bluetooth import ConfigFileManager
-                
+                from src.configurator.bluetooth import ConfigFileManager
+
                 cfm = ConfigFileManager()
                 assert config_path.exists()
                 assert cfm.capability == "NoInputNoOutput"
@@ -46,10 +46,10 @@ class TestConfigFileManager:
                 "discoverable=False\n"
                 "pairable=True\n"
             )
-            
+
             with patch("src.bluetooth.ConfigFileManager.config_path", config_path):
-                from src.bluetooth import ConfigFileManager
-                
+                from src.configurator.bluetooth import ConfigFileManager
+
                 cfm = ConfigFileManager()
                 assert cfm.capability == "KeyboardDisplay"
                 assert cfm.discoverable is False
@@ -59,13 +59,13 @@ class TestConfigFileManager:
         """Test config file creation."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "bluetooth.conf"
-            
+
             with patch("src.bluetooth.ConfigFileManager.config_path", config_path):
-                from src.bluetooth import ConfigFileManager
-                
+                from src.configurator.bluetooth import ConfigFileManager
+
                 cfm = ConfigFileManager()
                 cfm.create_config_file()
-                
+
                 assert config_path.exists()
                 content = config_path.read_text()
                 assert "[Bluetooth]" in content
@@ -82,13 +82,13 @@ class TestConfigFileManager:
                 "pairable=True\n"
                 "pairable_timeout=0\n"
             )
-            
+
             with patch("src.bluetooth.ConfigFileManager.config_path", config_path):
-                from src.bluetooth import ConfigFileManager
-                
+                from src.configurator.bluetooth import ConfigFileManager
+
                 cfm = ConfigFileManager()
                 cfm.load_config_values()
-                
+
                 assert cfm.capability == "KeyboardDisplay"
                 assert cfm.discoverable is True
                 assert cfm.pairable is True
@@ -99,13 +99,13 @@ class TestConfigFileManager:
         """Test setting a config value."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "bluetooth.conf"
-            
+
             with patch("src.bluetooth.ConfigFileManager.config_path", config_path):
-                from src.bluetooth import ConfigFileManager
-                
+                from src.configurator.bluetooth import ConfigFileManager
+
                 cfm = ConfigFileManager()
                 cfm.set_config_value("Bluetooth", "capability", "NoInputNoOutput")
-                
+
                 # Reload and verify
                 config = configparser.ConfigParser()
                 config.read(config_path)
@@ -116,13 +116,13 @@ class TestConfigFileManager:
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "bluetooth.conf"
             config_path.write_text("[Bluetooth]\n")
-            
+
             with patch("src.bluetooth.ConfigFileManager.config_path", config_path):
-                from src.bluetooth import ConfigFileManager
-                
+                from src.configurator.bluetooth import ConfigFileManager
+
                 cfm = ConfigFileManager()
                 cfm.set_config_value("NewSection", "key", "value")
-                
+
                 config = configparser.ConfigParser()
                 config.read(config_path)
                 assert config.get("NewSection", "key") == "value"
@@ -131,12 +131,12 @@ class TestConfigFileManager:
         """Test error handling when setting config value fails."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "bluetooth.conf"
-            
+
             with patch("src.bluetooth.ConfigFileManager.config_path", config_path):
-                from src.bluetooth import ConfigFileManager
-                
+                from src.configurator.bluetooth import ConfigFileManager
+
                 cfm = ConfigFileManager()
-                
+
                 # Mock open to raise exception
                 with patch("builtins.open", side_effect=IOError("Permission denied")):
                     cfm.set_config_value("Bluetooth", "key", "value")
@@ -158,12 +158,12 @@ class TestGetBluetoothSettings:
                 "pairable=False\n"
                 "pairable_timeout=60\n"
             )
-            
+
             with patch("src.bluetooth.ConfigFileManager.config_path", config_path):
-                from src.bluetooth import get_bluetooth_settings
-                
+                from src.configurator.bluetooth import get_bluetooth_settings
+
                 settings = get_bluetooth_settings()
-                
+
                 assert settings["capability"] == "KeyboardDisplay"
                 assert settings["discoverable"] is True
                 assert settings["discoverableTimeout"] == 120
@@ -174,12 +174,12 @@ class TestGetBluetoothSettings:
         """Test that get_bluetooth_settings returns a dictionary."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "bluetooth.conf"
-            
+
             with patch("src.bluetooth.ConfigFileManager.config_path", config_path):
-                from src.bluetooth import get_bluetooth_settings
-                
+                from src.configurator.bluetooth import get_bluetooth_settings
+
                 settings = get_bluetooth_settings()
-                
+
                 assert isinstance(settings, dict)
                 assert "capability" in settings
                 assert "discoverable" in settings
@@ -193,30 +193,30 @@ class TestSetBluetoothSettings:
         """Test setting a single bluetooth setting."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "bluetooth.conf"
-            
+
             with patch("src.bluetooth.ConfigFileManager.config_path", config_path):
-                from src.bluetooth import set_bluetooth_settings, get_bluetooth_settings
-                
+                from src.configurator.bluetooth import set_bluetooth_settings, get_bluetooth_settings
+
                 set_bluetooth_settings({"capability": "NoInputNoOutput"})
                 settings = get_bluetooth_settings()
-                
+
                 assert settings["capability"] == "NoInputNoOutput"
 
     def test_set_bluetooth_settings_multiple_values(self):
         """Test setting multiple bluetooth settings."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "bluetooth.conf"
-            
+
             with patch("src.bluetooth.ConfigFileManager.config_path", config_path):
-                from src.bluetooth import set_bluetooth_settings, get_bluetooth_settings
-                
+                from src.configurator.bluetooth import set_bluetooth_settings, get_bluetooth_settings
+
                 set_bluetooth_settings({
                     "capability": "Keyboard",
                     "discoverable": False,
                     "pairable": True,
                 })
                 settings = get_bluetooth_settings()
-                
+
                 assert settings["capability"] == "Keyboard"
                 assert settings["discoverable"] is False
                 assert settings["pairable"] is True
@@ -225,25 +225,25 @@ class TestSetBluetoothSettings:
         """Test that empty timeout values become '0'."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "bluetooth.conf"
-            
+
             with patch("src.bluetooth.ConfigFileManager.config_path", config_path):
-                from src.bluetooth import set_bluetooth_settings, get_bluetooth_settings
-                
+                from src.configurator.bluetooth import set_bluetooth_settings, get_bluetooth_settings
+
                 set_bluetooth_settings({"discoverable_timeout": ""})
                 settings = get_bluetooth_settings()
-                
+
                 assert settings["discoverableTimeout"] == 0
 
     def test_set_bluetooth_settings_returns_updated_settings(self):
         """Test that set_bluetooth_settings returns the updated settings."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "bluetooth.conf"
-            
+
             with patch("src.bluetooth.ConfigFileManager.config_path", config_path):
-                from src.bluetooth import set_bluetooth_settings
-                
+                from src.configurator.bluetooth import set_bluetooth_settings
+
                 result = set_bluetooth_settings({"capability": "Display"})
-                
+
                 assert isinstance(result, dict)
                 assert result["capability"] == "Display"
 
@@ -251,17 +251,17 @@ class TestSetBluetoothSettings:
         """Test that invalid keys are ignored."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "bluetooth.conf"
-            
+
             with patch("src.bluetooth.ConfigFileManager.config_path", config_path):
-                from src.bluetooth import set_bluetooth_settings, get_bluetooth_settings
-                
+                from src.configurator.bluetooth import set_bluetooth_settings, get_bluetooth_settings
+
                 # Should not raise error for invalid keys
                 set_bluetooth_settings({
                     "capability": "Display",
                     "invalid_key": "should_be_ignored",
                 })
                 settings = get_bluetooth_settings()
-                
+
                 assert settings["capability"] == "Display"
 
 
@@ -275,7 +275,7 @@ class TestGetPairedDevices:
         mock_bus = MagicMock()
         mock_om_interface = MagicMock()
         mock_proxy_object = MagicMock()
-        
+
         # Mock return values
         mock_devices = {
             "/org/bluez/hci0/dev_AA_BB_CC_DD_EE_FF": {
@@ -297,30 +297,30 @@ class TestGetPairedDevices:
                 }
             }
         }
-        
+
         # Setup mock return values
         async def mock_get_managed_objects():
             return mock_devices
-        
+
         async def mock_introspect(*args, **kwargs):
             return "<node></node>"
-        
+
         async def mock_connect():
             return mock_bus
-        
+
         mock_om_interface.call_GetManagedObjects = mock_get_managed_objects
         mock_proxy_object.get_interface.return_value = mock_om_interface
         mock_bus.get_proxy_object.return_value = mock_proxy_object
         mock_bus.introspect = mock_introspect
-        
+
         mock_message_bus = MagicMock()
         mock_message_bus.connect = mock_connect
-        
+
         with patch("src.bluetooth.MessageBus", return_value=mock_message_bus):
-            from src.bluetooth import get_paired_devices
-            
+            from src.configurator.bluetooth import get_paired_devices
+
             devices = await get_paired_devices()
-            
+
             assert len(devices) == 2
             assert devices[0]["name"] == "TestDevice"
             assert devices[0]["address"] == "AA:BB:CC:DD:EE:FF"
@@ -335,29 +335,29 @@ class TestGetPairedDevices:
         mock_bus = MagicMock()
         mock_om_interface = MagicMock()
         mock_proxy_object = MagicMock()
-        
+
         async def mock_get_managed_objects():
             return {}
-        
+
         async def mock_introspect(*args, **kwargs):
             return "<node></node>"
-        
+
         async def mock_connect():
             return mock_bus
-        
+
         mock_om_interface.call_GetManagedObjects = mock_get_managed_objects
         mock_proxy_object.get_interface.return_value = mock_om_interface
         mock_bus.get_proxy_object.return_value = mock_proxy_object
         mock_bus.introspect = mock_introspect
-        
+
         mock_message_bus = MagicMock()
         mock_message_bus.connect = mock_connect
-        
+
         with patch("src.bluetooth.MessageBus", return_value=mock_message_bus):
-            from src.bluetooth import get_paired_devices
-            
+            from src.configurator.bluetooth import get_paired_devices
+
             devices = await get_paired_devices()
-            
+
             assert devices == []
 
     @pytest.mark.asyncio
@@ -366,7 +366,7 @@ class TestGetPairedDevices:
         mock_bus = MagicMock()
         mock_om_interface = MagicMock()
         mock_proxy_object = MagicMock()
-        
+
         mock_devices = {
             "/org/bluez/hci0/dev_AA_BB_CC_DD_EE_FF": {
                 "org.bluez.Device1": {
@@ -387,29 +387,29 @@ class TestGetPairedDevices:
                 }
             }
         }
-        
+
         async def mock_get_managed_objects():
             return mock_devices
-        
+
         async def mock_introspect(*args, **kwargs):
             return "<node></node>"
-        
+
         async def mock_connect():
             return mock_bus
-        
+
         mock_om_interface.call_GetManagedObjects = mock_get_managed_objects
         mock_proxy_object.get_interface.return_value = mock_om_interface
         mock_bus.get_proxy_object.return_value = mock_proxy_object
         mock_bus.introspect = mock_introspect
-        
+
         mock_message_bus = MagicMock()
         mock_message_bus.connect = mock_connect
-        
+
         with patch("src.bluetooth.MessageBus", return_value=mock_message_bus):
-            from src.bluetooth import get_paired_devices
-            
+            from src.configurator.bluetooth import get_paired_devices
+
             devices = await get_paired_devices()
-            
+
             assert len(devices) == 1
             assert devices[0]["name"] == "PairedDevice"
 
@@ -418,13 +418,13 @@ class TestGetPairedDevices:
         """Test get_paired_devices error handling on DBus error."""
         async def mock_connect():
             raise MockDBusError("Connection failed")
-        
+
         mock_message_bus = MagicMock()
         mock_message_bus.connect = mock_connect
-        
+
         with patch("src.bluetooth.MessageBus", return_value=mock_message_bus):
-            from src.bluetooth import get_paired_devices
-            
+            from src.configurator.bluetooth import get_paired_devices
+
             with pytest.raises(MockDBusError):
                 await get_paired_devices()
 
@@ -433,13 +433,13 @@ class TestGetPairedDevices:
         """Test get_paired_devices error handling on general error."""
         async def mock_connect():
             raise RuntimeError("Unexpected error")
-        
+
         mock_message_bus = MagicMock()
         mock_message_bus.connect = mock_connect
-        
+
         with patch("src.bluetooth.MessageBus", return_value=mock_message_bus):
-            from src.bluetooth import get_paired_devices
-            
+            from src.configurator.bluetooth import get_paired_devices
+
             with pytest.raises(RuntimeError):
                 await get_paired_devices()
 
@@ -455,7 +455,7 @@ class TestUnpairDevice:
         mock_adapter_interface = MagicMock()
         mock_proxy_object = MagicMock()
         mock_adapter_proxy = MagicMock()
-        
+
         mock_devices = {
             "/org/bluez/hci0/dev_AA_BB_CC_DD_EE_FF": {
                 "org.bluez.Device1": {
@@ -465,21 +465,21 @@ class TestUnpairDevice:
                 }
             }
         }
-        
+
         async def mock_get_managed_objects():
             return mock_devices
-        
+
         async def mock_introspect(*args, **kwargs):
             return "<node></node>"
-        
+
         async def mock_connect():
             return mock_bus
-        
+
         mock_om_interface.call_GetManagedObjects = mock_get_managed_objects
         mock_adapter_interface.call_RemoveDevice = AsyncMock()
         mock_proxy_object.get_interface.return_value = mock_om_interface
         mock_adapter_proxy.get_interface.return_value = mock_adapter_interface
-        
+
         call_count = 0
         def get_proxy_object_side_effect(*args, **kwargs):
             nonlocal call_count
@@ -488,18 +488,18 @@ class TestUnpairDevice:
                 return mock_proxy_object
             else:
                 return mock_adapter_proxy
-        
+
         mock_bus.get_proxy_object.side_effect = get_proxy_object_side_effect
         mock_bus.introspect = mock_introspect
-        
+
         mock_message_bus = MagicMock()
         mock_message_bus.connect = mock_connect
-        
+
         with patch("src.bluetooth.MessageBus", return_value=mock_message_bus):
-            from src.bluetooth import unpair_device
-            
+            from src.configurator.bluetooth import unpair_device
+
             result = await unpair_device("AA:BB:CC:DD:EE:FF")
-            
+
             assert result["status"] == "unpaired"
             assert result["address"] == "AA:BB:CC:DD:EE:FF"
             mock_adapter_interface.call_RemoveDevice.assert_called_once()
@@ -512,7 +512,7 @@ class TestUnpairDevice:
         mock_adapter_interface = MagicMock()
         mock_proxy_object = MagicMock()
         mock_adapter_proxy = MagicMock()
-        
+
         mock_devices = {
             "/org/bluez/hci0/dev_AA_BB_CC_DD_EE_FF": {
                 "org.bluez.Device1": {
@@ -521,24 +521,24 @@ class TestUnpairDevice:
                 }
             }
         }
-        
+
         async def mock_get_managed_objects():
             return mock_devices
-        
+
         async def mock_introspect(*args, **kwargs):
             return "<node></node>"
-        
+
         async def mock_remove_device(*args, **kwargs):
             pass
-        
+
         async def mock_connect():
             return mock_bus
-        
+
         mock_om_interface.call_GetManagedObjects = mock_get_managed_objects
         mock_adapter_interface.call_RemoveDevice = mock_remove_device
         mock_proxy_object.get_interface.return_value = mock_om_interface
         mock_adapter_proxy.get_interface.return_value = mock_adapter_interface
-        
+
         call_count = 0
         def get_proxy_object_side_effect(*args, **kwargs):
             nonlocal call_count
@@ -547,18 +547,18 @@ class TestUnpairDevice:
                 return mock_proxy_object
             else:
                 return mock_adapter_proxy
-        
+
         mock_bus.get_proxy_object.side_effect = get_proxy_object_side_effect
         mock_bus.introspect = mock_introspect
-        
+
         mock_message_bus = MagicMock()
         mock_message_bus.connect = mock_connect
-        
+
         with patch("src.bluetooth.MessageBus", return_value=mock_message_bus):
-            from src.bluetooth import unpair_device
-            
+            from src.configurator.bluetooth import unpair_device
+
             result = await unpair_device("aa:bb:cc:dd:ee:ff")
-            
+
             assert result["address"] == "AA:BB:CC:DD:EE:FF"
 
     @pytest.mark.asyncio
@@ -567,27 +567,27 @@ class TestUnpairDevice:
         mock_bus = MagicMock()
         mock_om_interface = MagicMock()
         mock_proxy_object = MagicMock()
-        
+
         async def mock_get_managed_objects():
             return {}
-        
+
         async def mock_introspect(*args, **kwargs):
             return "<node></node>"
-        
+
         async def mock_connect():
             return mock_bus
-        
+
         mock_om_interface.call_GetManagedObjects = mock_get_managed_objects
         mock_proxy_object.get_interface.return_value = mock_om_interface
         mock_bus.get_proxy_object.return_value = mock_proxy_object
         mock_bus.introspect = mock_introspect
-        
+
         mock_message_bus = MagicMock()
         mock_message_bus.connect = mock_connect
-        
+
         with patch("src.bluetooth.MessageBus", return_value=mock_message_bus):
-            from src.bluetooth import unpair_device
-            
+            from src.configurator.bluetooth import unpair_device
+
             with pytest.raises(ValueError, match="Device not found"):
                 await unpair_device("AA:BB:CC:DD:EE:FF")
 
@@ -595,8 +595,8 @@ class TestUnpairDevice:
     async def test_unpair_device_missing_address(self):
         """Test unpair_device with missing address parameter."""
         with patch("src.bluetooth.MessageBus"):
-            from src.bluetooth import unpair_device
-            
+            from src.configurator.bluetooth import unpair_device
+
             with pytest.raises(ValueError, match="Missing 'address'"):
                 await unpair_device("")
 
@@ -605,13 +605,13 @@ class TestUnpairDevice:
         """Test unpair_device error handling on DBus error."""
         async def mock_connect():
             raise MockDBusError("Connection failed")
-        
+
         mock_message_bus = MagicMock()
         mock_message_bus.connect = mock_connect
-        
+
         with patch("src.bluetooth.MessageBus", return_value=mock_message_bus):
-            from src.bluetooth import unpair_device
-            
+            from src.configurator.bluetooth import unpair_device
+
             with pytest.raises(MockDBusError):
                 await unpair_device("AA:BB:CC:DD:EE:FF")
 
@@ -620,13 +620,13 @@ class TestUnpairDevice:
         """Test unpair_device error handling on general error."""
         async def mock_connect():
             raise RuntimeError("Unexpected error")
-        
+
         mock_message_bus = MagicMock()
         mock_message_bus.connect = mock_connect
-        
+
         with patch("src.bluetooth.MessageBus", return_value=mock_message_bus):
-            from src.bluetooth import unpair_device
-            
+            from src.configurator.bluetooth import unpair_device
+
             with pytest.raises(RuntimeError):
                 await unpair_device("AA:BB:CC:DD:EE:FF")
 
@@ -640,27 +640,27 @@ class TestAsyncIntegration:
         mock_bus = MagicMock()
         mock_om_interface = MagicMock()
         mock_proxy_object = MagicMock()
-        
+
         async def mock_get_managed_objects():
             return {}
-        
+
         async def mock_introspect(*args, **kwargs):
             return "<node></node>"
-        
+
         async def mock_connect():
             return mock_bus
-        
+
         mock_om_interface.call_GetManagedObjects = mock_get_managed_objects
         mock_proxy_object.get_interface.return_value = mock_om_interface
         mock_bus.get_proxy_object.return_value = mock_proxy_object
         mock_bus.introspect = mock_introspect
-        
+
         mock_message_bus = MagicMock()
         mock_message_bus.connect = mock_connect
-        
+
         with patch("src.bluetooth.MessageBus", return_value=mock_message_bus):
-            from src.bluetooth import get_paired_devices
-            
+            from src.configurator.bluetooth import get_paired_devices
+
             result = get_paired_devices()
             assert asyncio.iscoroutine(result)
             await result
@@ -668,8 +668,8 @@ class TestAsyncIntegration:
     @pytest.mark.asyncio
     async def test_unpair_device_is_coroutine(self):
         """Test that unpair_device returns a coroutine."""
-        from src.bluetooth import unpair_device
-        
+        from src.configurator.bluetooth import unpair_device
+
         result = unpair_device("AA:BB:CC:DD:EE:FF")
         assert asyncio.iscoroutine(result)
         # Don't await - we're just checking it's a coroutine

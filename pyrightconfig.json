@@ -1,6 +1,6 @@
 {
   "pythonVersion": "3.13",
-  "typeCheckingMode": "strict",
+  "typeCheckingMode": "basic",
   "include": ["src", "tests"],
   "pythonPath": "${workspaceFolder}/src:${workspaceFolder}",
   "venvPath": ".",

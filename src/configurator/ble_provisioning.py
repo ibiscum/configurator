@@ -23,6 +23,8 @@ import argparse
 import importlib
 from typing import Any, Dict, List, Optional
 
+from . import network
+
 try:
     _attr_module = importlib.import_module("bless.backends.attribute")
     _char_module = importlib.import_module("bless.backends.characteristic")
@@ -38,7 +40,7 @@ except ImportError:
     GATTCharacteristicProperties: Any = Any
     BlessServer: Any = Any
 
-from . import wifi, network
+from . import wifi
 
 try:
     from ._version import __version__ as app_version

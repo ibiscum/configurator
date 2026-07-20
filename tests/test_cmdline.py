@@ -3,7 +3,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-from src.cmdline import CmdlineTxt
+from src.configurator.cmdline import CmdlineTxt
 
 
 class TestCmdlineTxtInitialization:
@@ -16,23 +16,23 @@ class TestCmdlineTxtInitialization:
             firmware_path.mkdir()
             cmdline_file = firmware_path / "cmdline.txt"
             cmdline_file.write_text("console=serial0,115200\n")
-            
+
             with patch("src.cmdline.os.path.exists") as mock_exists:
                 def exists_side_effect(path):
                     if path == str(cmdline_file):
                         return True
                     return False
-                
+
                 mock_exists.side_effect = exists_side_effect
-                
+
                 with patch("builtins.open", create=True) as mock_open:
                     mock_open.return_value.__enter__.return_value.read.return_value = "console=serial0,115200"
-                    
+
                     cmdline = CmdlineTxt.__new__(CmdlineTxt)
                     cmdline.file_path = str(cmdline_file)
                     cmdline.content = "console=serial0,115200"
                     cmdline.original_content = "console=serial0,115200"
-                    
+
                     assert cmdline.file_path == str(cmdline_file)
 
     def test_init_reads_file_content(self):
@@ -40,10 +40,10 @@ class TestCmdlineTxtInitialization:
         with tempfile.TemporaryDirectory() as tmpdir:
             cmdline_file = Path(tmpdir) / "cmdline.txt"
             cmdline_file.write_text("console=serial0,115200 ipv6.disable=1\n")
-            
+
             with patch.object(CmdlineTxt, "_find_cmdline_file", return_value=str(cmdline_file)):
                 cmdline = CmdlineTxt()
-                
+
                 assert cmdline.content == "console=serial0,115200 ipv6.disable=1"
                 assert cmdline.original_content == "console=serial0,115200 ipv6.disable=1"
 
@@ -53,11 +53,11 @@ class TestCmdlineTxtInitialization:
             cmdline_file = Path(tmpdir) / "cmdline.txt"
             original_content = "root=/dev/mmcblk0p2 rootfstype=ext4 rootwait"
             cmdline_file.write_text(original_content + "\n")
-            
+
             with patch.object(CmdlineTxt, "_find_cmdline_file", return_value=str(cmdline_file)):
                 cmdline = CmdlineTxt()
                 cmdline.content = "modified content"
-                
+
                 assert cmdline.original_content == original_content
                 assert cmdline.content == "modified content"
 
@@ -70,11 +70,11 @@ class TestSerialConsole:
         with tempfile.TemporaryDirectory() as tmpdir:
             cmdline_file = Path(tmpdir) / "cmdline.txt"
             cmdline_file.write_text("root=/dev/mmcblk0p2 rootfstype=ext4\n")
-            
+
             with patch.object(CmdlineTxt, "_find_cmdline_file", return_value=str(cmdline_file)):
                 cmdline = CmdlineTxt()
                 cmdline.enable_serial_console()
-                
+
                 assert "console=serial0,115200" in cmdline.content
                 assert cmdline.content.startswith("console=serial0,115200")
 
@@ -83,12 +83,12 @@ class TestSerialConsole:
         with tempfile.TemporaryDirectory() as tmpdir:
             cmdline_file = Path(tmpdir) / "cmdline.txt"
             cmdline_file.write_text("console=serial0,115200 root=/dev/mmcblk0p2\n")
-            
+
             with patch.object(CmdlineTxt, "_find_cmdline_file", return_value=str(cmdline_file)):
                 cmdline = CmdlineTxt()
                 original_content = cmdline.content
                 cmdline.enable_serial_console()
-                
+
                 assert cmdline.content == original_content
 
     def test_disable_serial_console_removes_token(self):
@@ -96,11 +96,11 @@ class TestSerialConsole:
         with tempfile.TemporaryDirectory() as tmpdir:
             cmdline_file = Path(tmpdir) / "cmdline.txt"
             cmdline_file.write_text("console=serial0,115200 root=/dev/mmcblk0p2 rootfstype=ext4\n")
-            
+
             with patch.object(CmdlineTxt, "_find_cmdline_file", return_value=str(cmdline_file)):
                 cmdline = CmdlineTxt()
                 cmdline.disable_serial_console()
-                
+
                 assert "console=serial0,115200" not in cmdline.content
                 assert "root=/dev/mmcblk0p2" in cmdline.content
 
@@ -109,12 +109,12 @@ class TestSerialConsole:
         with tempfile.TemporaryDirectory() as tmpdir:
             cmdline_file = Path(tmpdir) / "cmdline.txt"
             cmdline_file.write_text("root=/dev/mmcblk0p2 rootfstype=ext4\n")
-            
+
             with patch.object(CmdlineTxt, "_find_cmdline_file", return_value=str(cmdline_file)):
                 cmdline = CmdlineTxt()
                 original_content = cmdline.content
                 cmdline.disable_serial_console()
-                
+
                 assert cmdline.content == original_content
 
     def test_enable_serial_console_inserts_at_beginning(self):
@@ -122,11 +122,11 @@ class TestSerialConsole:
         with tempfile.TemporaryDirectory() as tmpdir:
             cmdline_file = Path(tmpdir) / "cmdline.txt"
             cmdline_file.write_text("root=/dev/mmcblk0p2 rootfstype=ext4\n")
-            
+
             with patch.object(CmdlineTxt, "_find_cmdline_file", return_value=str(cmdline_file)):
                 cmdline = CmdlineTxt()
                 cmdline.enable_serial_console()
-                
+
                 tokens = cmdline.content.split()
                 assert tokens[0] == "console=serial0,115200"
 
@@ -139,11 +139,11 @@ class TestIPv6:
         with tempfile.TemporaryDirectory() as tmpdir:
             cmdline_file = Path(tmpdir) / "cmdline.txt"
             cmdline_file.write_text("console=serial0,115200 ipv6.disable=1 root=/dev/mmcblk0p2\n")
-            
+
             with patch.object(CmdlineTxt, "_find_cmdline_file", return_value=str(cmdline_file)):
                 cmdline = CmdlineTxt()
                 cmdline.enable_ipv6()
-                
+
                 assert "ipv6.disable=1" not in cmdline.content
                 assert "console=serial0,115200" in cmdline.content
                 assert "root=/dev/mmcblk0p2" in cmdline.content
@@ -153,12 +153,12 @@ class TestIPv6:
         with tempfile.TemporaryDirectory() as tmpdir:
             cmdline_file = Path(tmpdir) / "cmdline.txt"
             cmdline_file.write_text("console=serial0,115200 root=/dev/mmcblk0p2\n")
-            
+
             with patch.object(CmdlineTxt, "_find_cmdline_file", return_value=str(cmdline_file)):
                 cmdline = CmdlineTxt()
                 original_content = cmdline.content
                 cmdline.enable_ipv6()
-                
+
                 assert cmdline.content == original_content
 
     def test_disable_ipv6_adds_disable_token(self):
@@ -166,11 +166,11 @@ class TestIPv6:
         with tempfile.TemporaryDirectory() as tmpdir:
             cmdline_file = Path(tmpdir) / "cmdline.txt"
             cmdline_file.write_text("console=serial0,115200 root=/dev/mmcblk0p2 rootfstype=ext4\n")
-            
+
             with patch.object(CmdlineTxt, "_find_cmdline_file", return_value=str(cmdline_file)):
                 cmdline = CmdlineTxt()
                 cmdline.disable_ipv6()
-                
+
                 assert "ipv6.disable=1" in cmdline.content
 
     def test_disable_ipv6_already_disabled(self):
@@ -178,12 +178,12 @@ class TestIPv6:
         with tempfile.TemporaryDirectory() as tmpdir:
             cmdline_file = Path(tmpdir) / "cmdline.txt"
             cmdline_file.write_text("console=serial0,115200 ipv6.disable=1 root=/dev/mmcblk0p2\n")
-            
+
             with patch.object(CmdlineTxt, "_find_cmdline_file", return_value=str(cmdline_file)):
                 cmdline = CmdlineTxt()
                 original_content = cmdline.content
                 cmdline.disable_ipv6()
-                
+
                 assert cmdline.content == original_content
 
     def test_disable_ipv6_appends_token(self):
@@ -191,11 +191,11 @@ class TestIPv6:
         with tempfile.TemporaryDirectory() as tmpdir:
             cmdline_file = Path(tmpdir) / "cmdline.txt"
             cmdline_file.write_text("console=serial0,115200 root=/dev/mmcblk0p2\n")
-            
+
             with patch.object(CmdlineTxt, "_find_cmdline_file", return_value=str(cmdline_file)):
                 cmdline = CmdlineTxt()
                 cmdline.disable_ipv6()
-                
+
                 tokens = cmdline.content.split()
                 assert tokens[-1] == "ipv6.disable=1"
 
@@ -208,10 +208,10 @@ class TestFileOperations:
         with tempfile.TemporaryDirectory() as tmpdir:
             cmdline_file = Path(tmpdir) / "cmdline.txt"
             cmdline_file.write_text("  console=serial0,115200  \n")
-            
+
             with patch.object(CmdlineTxt, "_find_cmdline_file", return_value=str(cmdline_file)):
                 cmdline = CmdlineTxt()
-                
+
                 assert cmdline.content == "console=serial0,115200"
 
     def test_save_creates_backup(self):
@@ -219,12 +219,12 @@ class TestFileOperations:
         with tempfile.TemporaryDirectory() as tmpdir:
             cmdline_file = Path(tmpdir) / "cmdline.txt"
             cmdline_file.write_text("root=/dev/mmcblk0p2\n")
-            
+
             with patch.object(CmdlineTxt, "_find_cmdline_file", return_value=str(cmdline_file)):
                 cmdline = CmdlineTxt()
                 cmdline.enable_serial_console()
                 cmdline.save()
-                
+
                 backup_file = Path(str(cmdline_file) + ".backup")
                 assert backup_file.exists()
                 assert backup_file.read_text() == "root=/dev/mmcblk0p2\n"
@@ -234,12 +234,12 @@ class TestFileOperations:
         with tempfile.TemporaryDirectory() as tmpdir:
             cmdline_file = Path(tmpdir) / "cmdline.txt"
             cmdline_file.write_text("root=/dev/mmcblk0p2\n")
-            
+
             with patch.object(CmdlineTxt, "_find_cmdline_file", return_value=str(cmdline_file)):
                 cmdline = CmdlineTxt()
                 cmdline.enable_serial_console()
                 cmdline.save()
-                
+
                 content = cmdline_file.read_text()
                 assert content.endswith("\n")
                 assert content == "console=serial0,115200 root=/dev/mmcblk0p2\n"
@@ -250,11 +250,11 @@ class TestFileOperations:
             cmdline_file = Path(tmpdir) / "cmdline.txt"
             original_content = "root=/dev/mmcblk0p2"
             cmdline_file.write_text(original_content + "\n")
-            
+
             with patch.object(CmdlineTxt, "_find_cmdline_file", return_value=str(cmdline_file)):
                 cmdline = CmdlineTxt()
                 cmdline.save()
-                
+
                 backup_file = Path(str(cmdline_file) + ".backup")
                 assert not backup_file.exists()
 
@@ -264,18 +264,18 @@ class TestFileOperations:
             cmdline_file = Path(tmpdir) / "cmdline.txt"
             original = "root=/dev/mmcblk0p2"
             cmdline_file.write_text(original + "\n")
-            
+
             with patch.object(CmdlineTxt, "_find_cmdline_file", return_value=str(cmdline_file)):
                 cmdline = CmdlineTxt()
-                
+
                 # Save without changes - should not create backup
                 cmdline.save()
                 assert not (Path(str(cmdline_file) + ".backup").exists())
-                
+
                 # Now make a change
                 cmdline.enable_serial_console()
                 assert cmdline.content != cmdline.original_content
-                
+
                 # Save with changes - should create backup
                 cmdline.save()
                 assert (Path(str(cmdline_file) + ".backup").exists())
@@ -285,22 +285,22 @@ class TestFileOperations:
         with tempfile.TemporaryDirectory() as tmpdir:
             cmdline_file = Path(tmpdir) / "cmdline.txt"
             cmdline_file.write_text("root=/dev/mmcblk0p2\n")
-            
+
             with patch.object(CmdlineTxt, "_find_cmdline_file", return_value=str(cmdline_file)):
                 # First modification
                 cmdline = CmdlineTxt()
                 cmdline.enable_serial_console()
                 cmdline.save()
-                
+
                 # Second modification
                 cmdline = CmdlineTxt()
                 cmdline.disable_serial_console()
                 cmdline.enable_ipv6()
                 cmdline.save()
-                
+
                 backup_file = Path(str(cmdline_file) + ".backup")
                 backup_content = backup_file.read_text()
-                
+
                 # Backup should contain the first save (serial console enabled)
                 assert "console=serial0,115200" in backup_content
 
@@ -314,11 +314,11 @@ class TestTokenHandling:
             cmdline_file = Path(tmpdir) / "cmdline.txt"
             original = "root=/dev/mmcblk0p2 rootfstype=ext4 rootwait elevator=noop"
             cmdline_file.write_text(original + "\n")
-            
+
             with patch.object(CmdlineTxt, "_find_cmdline_file", return_value=str(cmdline_file)):
                 cmdline = CmdlineTxt()
                 cmdline.enable_serial_console()
-                
+
                 tokens = cmdline.content.split()
                 assert "root=/dev/mmcblk0p2" in tokens
                 assert "rootfstype=ext4" in tokens
@@ -331,13 +331,13 @@ class TestTokenHandling:
         with tempfile.TemporaryDirectory() as tmpdir:
             cmdline_file = Path(tmpdir) / "cmdline.txt"
             cmdline_file.write_text("root=/dev/mmcblk0p2\n")
-            
+
             with patch.object(CmdlineTxt, "_find_cmdline_file", return_value=str(cmdline_file)):
                 cmdline = CmdlineTxt()
                 cmdline.enable_serial_console()
                 cmdline.disable_ipv6()
                 cmdline.save()
-                
+
                 tokens = cmdline.content.split()
                 assert "console=serial0,115200" in tokens
                 assert "ipv6.disable=1" in tokens
@@ -348,14 +348,14 @@ class TestTokenHandling:
         with tempfile.TemporaryDirectory() as tmpdir:
             cmdline_file = Path(tmpdir) / "cmdline.txt"
             cmdline_file.write_text("console=serial0,115200 root=/dev/mmcblk0p2\n")
-            
+
             with patch.object(CmdlineTxt, "_find_cmdline_file", return_value=str(cmdline_file)):
                 cmdline = CmdlineTxt()
-                
+
                 # Try enabling multiple times
                 for _ in range(3):
                     cmdline.enable_serial_console()
-                
+
                 token_count = cmdline.content.count("console=serial0,115200")
                 assert token_count == 1
 
@@ -368,11 +368,11 @@ class TestEdgeCases:
         with tempfile.TemporaryDirectory() as tmpdir:
             cmdline_file = Path(tmpdir) / "cmdline.txt"
             cmdline_file.write_text("\n")
-            
+
             with patch.object(CmdlineTxt, "_find_cmdline_file", return_value=str(cmdline_file)):
                 cmdline = CmdlineTxt()
                 cmdline.enable_serial_console()
-                
+
                 assert "console=serial0,115200" in cmdline.content
 
     def test_single_token_file(self):
@@ -380,11 +380,11 @@ class TestEdgeCases:
         with tempfile.TemporaryDirectory() as tmpdir:
             cmdline_file = Path(tmpdir) / "cmdline.txt"
             cmdline_file.write_text("root=/dev/mmcblk0p2\n")
-            
+
             with patch.object(CmdlineTxt, "_find_cmdline_file", return_value=str(cmdline_file)):
                 cmdline = CmdlineTxt()
                 cmdline.enable_serial_console()
-                
+
                 tokens = cmdline.content.split()
                 assert len(tokens) == 2
                 assert tokens[0] == "console=serial0,115200"
@@ -395,11 +395,11 @@ class TestEdgeCases:
         with tempfile.TemporaryDirectory() as tmpdir:
             cmdline_file = Path(tmpdir) / "cmdline.txt"
             cmdline_file.write_text("console=serial0,115200\n")
-            
+
             with patch.object(CmdlineTxt, "_find_cmdline_file", return_value=str(cmdline_file)):
                 cmdline = CmdlineTxt()
                 cmdline.disable_serial_console()
-                
+
                 assert cmdline.content == ""
 
     def test_whitespace_normalization(self):
@@ -407,11 +407,11 @@ class TestEdgeCases:
         with tempfile.TemporaryDirectory() as tmpdir:
             cmdline_file = Path(tmpdir) / "cmdline.txt"
             cmdline_file.write_text("root=/dev/mmcblk0p2  rootfstype=ext4   rootwait\n")
-            
+
             with patch.object(CmdlineTxt, "_find_cmdline_file", return_value=str(cmdline_file)):
                 cmdline = CmdlineTxt()
                 cmdline.enable_serial_console()
-                
+
                 # Check no double spaces
                 assert "  " not in cmdline.content
 
@@ -424,12 +424,12 @@ class TestMainFunction:
         with tempfile.TemporaryDirectory() as tmpdir:
             cmdline_file = Path(tmpdir) / "cmdline.txt"
             cmdline_file.write_text("root=/dev/mmcblk0p2\n")
-            
+
             with patch.object(CmdlineTxt, "_find_cmdline_file", return_value=str(cmdline_file)):
                 with patch("sys.argv", ["cmdline", "--enable-serial-console"]):
-                    from src.cmdline import main
+                    from src.configurator.cmdline import main
                     main()
-                
+
                 content = cmdline_file.read_text()
                 assert "console=serial0,115200" in content
 
@@ -438,12 +438,12 @@ class TestMainFunction:
         with tempfile.TemporaryDirectory() as tmpdir:
             cmdline_file = Path(tmpdir) / "cmdline.txt"
             cmdline_file.write_text("console=serial0,115200 root=/dev/mmcblk0p2\n")
-            
+
             with patch.object(CmdlineTxt, "_find_cmdline_file", return_value=str(cmdline_file)):
                 with patch("sys.argv", ["cmdline", "--disable-serial-console"]):
-                    from src.cmdline import main
+                    from src.configurator.cmdline import main
                     main()
-                
+
                 content = cmdline_file.read_text()
                 assert "console=serial0,115200" not in content
 
@@ -452,12 +452,12 @@ class TestMainFunction:
         with tempfile.TemporaryDirectory() as tmpdir:
             cmdline_file = Path(tmpdir) / "cmdline.txt"
             cmdline_file.write_text("ipv6.disable=1 root=/dev/mmcblk0p2\n")
-            
+
             with patch.object(CmdlineTxt, "_find_cmdline_file", return_value=str(cmdline_file)):
                 with patch("sys.argv", ["cmdline", "--enable-ipv6"]):
-                    from src.cmdline import main
+                    from src.configurator.cmdline import main
                     main()
-                
+
                 content = cmdline_file.read_text()
                 assert "ipv6.disable=1" not in content
 
@@ -466,19 +466,19 @@ class TestMainFunction:
         with tempfile.TemporaryDirectory() as tmpdir:
             cmdline_file = Path(tmpdir) / "cmdline.txt"
             cmdline_file.write_text("root=/dev/mmcblk0p2\n")
-            
+
             with patch.object(CmdlineTxt, "_find_cmdline_file", return_value=str(cmdline_file)):
                 with patch("sys.argv", ["cmdline", "--disable-ipv6"]):
-                    from src.cmdline import main
+                    from src.configurator.cmdline import main
                     main()
-                
+
                 content = cmdline_file.read_text()
                 assert "ipv6.disable=1" in content
 
     def test_main_requires_argument(self):
         """Test main() requires a command-line argument."""
         with patch("sys.argv", ["cmdline"]):
-            from src.cmdline import main
-            
+            from src.configurator.cmdline import main
+
             with pytest.raises(SystemExit):
                 main()

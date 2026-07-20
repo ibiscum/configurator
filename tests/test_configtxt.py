@@ -24,8 +24,8 @@ from unittest.mock import patch
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 # Now import ConfigTxt from the src package
-from src.configtxt import ConfigTxt  # noqa: E402
-from src import configtxt as configtxt_module  # noqa: E402
+from src.configurator.configtxt import ConfigTxt  # noqa: E402
+from src.configurator import configtxt as configtxt_module  # noqa: E402
 
 
 class TestConfigTxtInitialization(unittest.TestCase):

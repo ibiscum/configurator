@@ -33,7 +33,7 @@ flask_mock.request = MagicMock()
 flask_mock.Response = MockResponse
 sys.modules["flask"] = flask_mock
 
-from src.handlers.hostname_handler import HostnameHandler  # pylint: disable=wrong-import-position  # noqa: E402
+from src.configurator.handlers.hostname_handler import HostnameHandler  # pylint: disable=wrong-import-position  # noqa: E402
 
 
 class TestHostnameHandlerGetHostname(unittest.TestCase):

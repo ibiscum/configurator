@@ -28,11 +28,11 @@ logger = logging.getLogger(__name__)
 
 class ConfigAPIServer:
     """REST API server for HiFiBerry configuration services"""
-    
+
     def __init__(self, host: str = '0.0.0.0', port: int = 1081, debug: bool = False, no_waitress: bool = False) -> None:
         """
         Initialize the API server
-        
+
         Args:
             host: Host to bind to (default: 0.0.0.0)
             port: Port to listen on (default: 1081)
@@ -44,16 +44,16 @@ class ConfigAPIServer:
         self.port = port
         self.debug = debug
         self.no_waitress = no_waitress
-        
+
         logger.info("ConfigAPIServer.__init__: Creating Flask app")
         self.app = Flask(__name__)
-        
+
         logger.info("ConfigAPIServer.__init__: Creating ConfigDB")
         self.configdb = ConfigDB()
-        
+
         logger.info("ConfigAPIServer.__init__: Creating SystemInfo")
         self.systeminfo = SystemInfo()
-        
+
         # Initialize all handlers
         logger.info("ConfigAPIServer.__init__: Initializing handlers")
         self.systemd_handler = SystemdHandler()
@@ -69,37 +69,37 @@ class ConfigAPIServer:
         self.bluetooth_handler = BluetoothHandler()
         self.player_registry_handler = PlayerRegistryHandler(self.configdb)
         self.ble_handler = BLEProvisioningHandler()
-            
+
         logger.info("ConfigAPIServer.__init__: Creating SettingsManager")
         self.settings_manager = SettingsManager(self.configdb)
-        
+
         # Configure Flask logging
         if not debug:
             self.app.logger.setLevel(logging.WARNING)
-        
+
         # Register API routes
         logger.info("ConfigAPIServer.__init__: Registering routes")
         self._register_routes()
-        
+
         # Register settings for modules
         logger.info("ConfigAPIServer.__init__: Registering module settings")
         self._register_module_settings()
-        
+
         logger.info("ConfigAPIServer.__init__: Initialization complete")
-    
+
     def _register_module_settings(self):
         """Register settings that should be saved/restored by modules"""
         pass
-    
+
     def restore_settings(self):
         """Restore all registered settings from configdb"""
         logger.info("Restoring saved settings...")
         results = self.settings_manager.restore_all_settings()
         return results
-    
+
     def _register_routes(self):
         """Register all API routes"""
-        
+
         # Version endpoint
         @self.app.route('/version', methods=['GET'])
         @self.app.route('/api/v1/version', methods=['GET'])
@@ -160,7 +160,7 @@ class ConfigAPIServer:
                     'ble_provisioning_stop': '/api/v1/ble/provisioning/stop'
                 }
             })
-        
+
         # Setup status endpoints
         @self.app.route('/api/v1/setup/status', methods=['GET'])
         def get_setup_status():
@@ -228,23 +228,23 @@ class ConfigAPIServer:
                     'message': 'Failed to retrieve system information',
                     'error': str(e)
                 }), 500
-        
+
         # Configuration endpoints using configdb handlers
         @self.app.route('/api/v1/keys', methods=['GET'])
         def get_config_keys():
             """Get all configuration keys"""
             return self.configdb.handle_get_config_keys()
-        
+
         @self.app.route('/api/v1/key/<key>', methods=['GET'])
         def get_config_value(key):
             """Get a specific configuration value"""
             return self.configdb.handle_get_config_value(key)
-        
+
         @self.app.route('/api/v1/key/<key>', methods=['PUT', 'POST'])
         def set_config_value(key):
             """Set a configuration value"""
             return self.configdb.handle_set_config_value(key)
-        
+
         @self.app.route('/api/v1/key/<key>', methods=['DELETE'])
         def delete_config_value(key):
             """Delete a configuration value"""
@@ -277,43 +277,43 @@ class ConfigAPIServer:
         def list_systemd_services():
             """List all configured systemd services and their permissions"""
             return self.systemd_handler.handle_list_services()
-        
+
         @self.app.route('/api/v1/systemd/service/<service>', methods=['GET'])
         def get_systemd_service_status(service):
             """Get detailed status of a systemd service"""
             return self.systemd_handler.handle_systemd_status(service)
-        
+
         @self.app.route('/api/v1/systemd/service/<service>/exists', methods=['GET'])
         def check_service_exists(service):
             """Check if a systemd service exists on the system"""
             return self.systemd_handler.handle_service_exists(service)
-        
+
         @self.app.route('/api/v1/systemd/service/<service>/<operation>', methods=['POST'])
         def execute_systemd_operation(service, operation):
             """Execute a systemd operation on a service"""
             return self.systemd_handler.handle_systemd_operation(service, operation)
-        
+
         # SMB/CIFS endpoints
         @self.app.route('/api/v1/smb/servers', methods=['GET'])
         def list_smb_servers():
             """List all SMB servers on the network"""
             return self.smb_handler.handle_list_servers()
-        
+
         @self.app.route('/api/v1/smb/test/<server>', methods=['POST'])
         def test_smb_connection(server):
             """Test connection to an SMB server"""
             return self.smb_handler.handle_test_connection(server)
-        
+
         @self.app.route('/api/v1/smb/shares', methods=['POST'])
         def list_smb_shares():
             """List shares on an SMB server"""
             return self.smb_handler.handle_list_shares()
-        
+
         @self.app.route('/api/v1/smb/mounts', methods=['GET'])
         def list_smb_mounts():
             """List all configured SMB mounts"""
             return self.smb_handler.handle_list_mounts()
-        
+
         @self.app.route('/api/v1/smb/mount', methods=['POST'])
         def manage_smb_mount():
             """Create or remove SMB share configuration based on action parameter"""
@@ -329,7 +329,7 @@ class ConfigAPIServer:
         def get_hostname():
             """Get current system and pretty hostnames"""
             return self.hostname_handler.handle_get_hostname()
-        
+
         @self.app.route('/api/v1/hostname', methods=['POST'])
         def set_hostname():
             """Set system hostname and/or pretty hostname"""
@@ -340,7 +340,7 @@ class ConfigAPIServer:
         def list_soundcards():
             """List all available HiFiBerry sound cards"""
             return self.soundcard_handler.handle_list_soundcards()
-        
+
         @self.app.route('/api/v1/soundcard/dtoverlay', methods=['POST'])
         def set_dtoverlay():
             """Set device tree overlay for sound card configuration"""
@@ -402,7 +402,7 @@ class ConfigAPIServer:
         def reboot_system():
             """Reboot the system with optional delay"""
             return self.system_handler.handle_reboot()
-        
+
         @self.app.route('/api/v1/system/shutdown', methods=['POST'])
         def shutdown_system():
             """Shutdown the system with optional delay"""
@@ -413,7 +413,7 @@ class ConfigAPIServer:
         def list_symlinks():
             """List all symlinks in a given directory including their destinations"""
             return self.filesystem_handler.handle_list_symlinks()
-        
+
         @self.app.route('/api/v1/filesystem/file-exists', methods=['POST'])
         def check_file_exists():
             """Check if a file or directory exists at a given path"""
@@ -424,12 +424,12 @@ class ConfigAPIServer:
         def list_scripts():
             """List all configured scripts"""
             return self.script_handler.handle_list_scripts()
-        
+
         @self.app.route('/api/v1/scripts/<script_id>', methods=['GET'])
         def get_script_info(script_id):
             """Get information about a specific script"""
             return self.script_handler.handle_get_script_info(script_id)
-        
+
         @self.app.route('/api/v1/scripts/<script_id>/execute', methods=['POST'])
         def execute_script(script_id):
             """Execute a configured script"""
@@ -544,7 +544,7 @@ class ConfigAPIServer:
                 results = self.settings_manager.save_all_settings()
                 successful = sum(results.values())
                 total = len(results)
-                
+
                 return jsonify({
                     'status': 'success',
                     'message': f'Saved {successful}/{total} settings',
@@ -568,7 +568,7 @@ class ConfigAPIServer:
                 results = self.settings_manager.restore_all_settings()
                 successful = sum(results.values())
                 total = len(results)
-                
+
                 return jsonify({
                     'status': 'success',
                     'message': f'Restored {successful}/{total} settings',
@@ -591,7 +591,7 @@ class ConfigAPIServer:
             try:
                 registered = self.settings_manager.list_registered_settings()
                 saved = self.settings_manager.list_saved_settings()
-                
+
                 return jsonify({
                     'status': 'success',
                     'data': {
@@ -615,21 +615,21 @@ class ConfigAPIServer:
                 'status': 'error',
                 'message': 'Bad request'
             }), 400
-        
+
         @self.app.errorhandler(404)
         def not_found(error):
             return jsonify({
                 'status': 'error',
                 'message': 'Resource not found'
             }), 404
-        
+
         @self.app.errorhandler(500)
         def internal_error(error):
             return jsonify({
                 'status': 'error',
                 'message': 'Internal server error'
             }), 500
-    
+
     def run(self):
         """Start the API server"""
         logger.info(f"Starting HiFiBerry Configuration Server on {self.host}:{self.port}")
@@ -637,10 +637,10 @@ class ConfigAPIServer:
             if WAITRESS_AVAILABLE and not self.debug and not self.no_waitress:
                 # Use Waitress production server (prevents thread exhaustion)
                 logger.info("Using Waitress WSGI server (production mode)")
-                
+
                 thread_count = 6
                 logger.info(f"Waitress configuration: threads={thread_count}, host={self.host}, port={self.port}")
-                
+
                 serve(
                     self.app,
                     host=self.host,
@@ -670,30 +670,30 @@ class ConfigAPIServer:
 def setup_logging(verbose: bool = False) -> None:
     """Configure logging"""
     log_level = logging.DEBUG if verbose else logging.INFO
-    
+
     # Configure root logger
     root_logger = logging.getLogger()
     root_logger.setLevel(log_level)
-    
+
     # Remove existing handlers if any
     for handler in root_logger.handlers[:]:
         root_logger.removeHandler(handler)
-    
+
     # Create console handler
     console_handler = logging.StreamHandler(stream=sys.stderr)
     console_handler.setLevel(log_level)
-    
+
     # Create formatter
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     console_handler.setFormatter(formatter)
-    
+
     # Add handler to logger
     root_logger.addHandler(console_handler)
 
 def parse_arguments():
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(description='HiFiBerry Configuration Server')
-    
+
     parser.add_argument('--host', default='0.0.0.0',
                         help='Host to bind to (default: 0.0.0.0)')
     parser.add_argument('--port', type=int, default=1081,
@@ -708,7 +708,7 @@ def parse_arguments():
                         help='Automatically restore saved settings during normal startup')
     parser.add_argument('--no-waitress', action='store_true',
                         help='Disable Waitress, use Flask development server instead')
-    
+
     return parser.parse_args()
 
 def main():
@@ -716,21 +716,21 @@ def main():
     # Add early logging to stderr before anything else
     import sys
     print("config-server: main() called", file=sys.stderr, flush=True)
-    
+
     try:
         print("config-server: Starting initialization...", file=sys.stderr, flush=True)
-        
+
         args = parse_arguments()
-        
+
         print(f"config-server: Arguments parsed - port={args.port}", file=sys.stderr, flush=True)
-        
+
         # Configure logging
         setup_logging(args.verbose)
-        
+
         logger.info("Starting HiFiBerry Configuration Server")
         logger.info(f"Version: {__version__}")
         logger.info(f"Host: {args.host}, Port: {args.port}")
-        
+
         # Create the server
         logger.info("Creating server instance...")
         server = ConfigAPIServer(
@@ -745,7 +745,7 @@ def main():
         print(f"config-server: FATAL ERROR during initialization: {e}", file=sys.stderr, flush=True)
         print(f"config-server: Traceback:\n{traceback.format_exc()}", file=sys.stderr, flush=True)
         sys.exit(1)
-    
+
     # Restore settings if requested (standalone mode)
     if args.restore_settings:
         logger.info("Restoring settings...")
@@ -753,11 +753,11 @@ def main():
         successful = sum(results.values())
         total = len(results)
         logger.info(f"Settings restoration completed: {successful}/{total} successful")
-        
+
         # Always exit successfully after attempting restore
         # This prevents systemd service failures when some settings can't be restored
         return 0
-    
+
     # Auto-restore settings during normal startup if requested
     if args.auto_restore_settings:
         logger.info("Auto-restoring settings during startup...")
@@ -768,7 +768,7 @@ def main():
             logger.info(f"Auto-restore completed: {successful}/{total} successful")
         except Exception as e:
             logger.warning(f"Auto-restore failed, continuing with startup: {e}")
-    
+
     # Start the server normally
     server.run()
 

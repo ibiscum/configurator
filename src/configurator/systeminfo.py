@@ -20,7 +20,7 @@ from .hostname_utils import get_hostnames_with_fallback
 
 class SystemInfo:
     """Collects and provides system information from various sources"""
-    
+
     def __init__(self):
         """Initialize the SystemInfo collector"""
         self.logger = logging.getLogger(__name__)
@@ -28,19 +28,19 @@ class SystemInfo:
         self._hat_info = None
         self._system_uuid = None
         self._soundcard = None
-        
+
     def _get_pi_model(self) -> PiModel:
         """Get Pi model information (cached)"""
         if self._pi_model is None:
             self._pi_model = PiModel()
         return self._pi_model
-    
+
     def _get_hat_info(self) -> Dict[str, Optional[str]]:
         """Get HAT information (cached)"""
         if self._hat_info is None:
             self._hat_info = get_hat_info()
         return self._hat_info
-    
+
     def _get_system_uuid(self) -> Optional[str]:
         """Get system UUID from /etc/uuid (cached)"""
         if self._system_uuid is None:
@@ -54,10 +54,10 @@ class SystemInfo:
                 self.logger.error(f"Failed to read /etc/uuid: {e}")
                 self._system_uuid = None
         return self._system_uuid
-    
+
     def _get_soundcard(self, prioritize_aplay: bool = False) -> Soundcard:
         """Get sound card information (cached)
-        
+
         Args:
             prioritize_aplay: If True, use aplay -l as the highest priority detection source
         """
@@ -68,7 +68,7 @@ class SystemInfo:
             else:
                 self._soundcard = Soundcard()
         return self._soundcard
-    
+
     def _get_hostname_info(self) -> Tuple[Optional[str], Optional[str]]:
         """Get hostname information"""
         try:
@@ -76,14 +76,14 @@ class SystemInfo:
         except Exception as e:
             self.logger.error(f"Error getting hostnames: {e}")
             return None, None
-    
+
     def _get_memory_info(self) -> dict[str, Any]:
         """Get physical memory information"""
         try:
             # Read /proc/meminfo to get memory information
             with open('/proc/meminfo', 'r') as f:
                 meminfo = f.read()
-            
+
             memory_data: dict[str, Any] = {}
             for line in meminfo.split('\n'):
                 if line.startswith('MemTotal:'):
@@ -95,7 +95,7 @@ class SystemInfo:
                     import math
                     memory_data['total_gb'] = math.ceil(total_kb / 1024 / 1024)
                     break
-            
+
             return memory_data
         except Exception as e:
             self.logger.error(f"Failed to get memory info: {e}")
@@ -104,7 +104,7 @@ class SystemInfo:
                 'total_mb': None,
                 'total_gb': None
             }
-    
+
     def get_pi_model_name(self) -> str:
         """Get the Pi model name"""
         try:
@@ -113,25 +113,25 @@ class SystemInfo:
         except Exception as e:
             self.logger.error(f"Failed to get Pi model: {e}")
             return "unknown"
-    
+
     def get_hat_vendor_card(self) -> str:
         """Get HAT vendor and card name in format 'vendor:cardname'"""
         try:
             hat_info = self._get_hat_info()
             vendor = hat_info.get('vendor', 'unknown')
             product = hat_info.get('product', 'unknown')
-            
+
             # Handle None values
             if vendor is None:
                 vendor = "unknown"
             if product is None:
                 product = "unknown"
-                
+
             return f"{vendor}:{product}"
         except Exception as e:
             self.logger.error(f"Failed to get HAT info: {e}")
             return "unknown:unknown"
-    
+
     def get_system_uuid(self) -> Optional[str]:
         """Get the system UUID from /etc/uuid"""
         try:
@@ -139,7 +139,7 @@ class SystemInfo:
         except Exception as e:
             self.logger.error(f"Failed to get system UUID: {e}")
             return None
-    
+
     def get_hostnames(self) -> Tuple[Optional[str], Optional[str]]:
         """Get both system hostname and pretty hostname (falls back to hostname if not set)"""
         try:
@@ -147,7 +147,7 @@ class SystemInfo:
         except Exception as e:
             self.logger.error(f"Failed to get hostnames: {e}")
             return None, None
-    
+
     def _is_soundcard_fixed_in_config_txt(self, soundcard: Soundcard) -> bool:
         """
         Check if soundcard detection is disabled via config.txt comment.
@@ -162,7 +162,7 @@ class SystemInfo:
             bool: True if config.txt contains the detection disabled comment, False otherwise
         """
         try:
-            from src.configtxt import HIFIBERRY_DETECTION_DISABLED
+            from src.configurator.configtxt import HIFIBERRY_DETECTION_DISABLED
 
             # Read config.txt
             with open('/boot/firmware/config.txt', 'r') as f:
@@ -192,31 +192,31 @@ class SystemInfo:
             None (auto-detected, no pin in effect).
         """
         try:
-            from src.configdb import ConfigDB
+            from src.configurator.configdb import ConfigDB
             if ConfigDB().get("soundcard.name"):
                 return "configdb"
         except Exception as e:
             self.logger.debug(f"Could not check ConfigDB for soundcard.name: {e}")
 
         try:
-            from src.soundcard_detector import SoundcardDetector
+            from src.configurator.soundcard_detector import SoundcardDetector
             if SoundcardDetector().detect_from_config_txt_comment():
                 return "config.txt"
         except Exception as e:
             self.logger.debug(f"Could not read soundcard pin from config.txt: {e}")
 
         return None
-    
+
     def get_soundcard_info(self) -> dict[str, Any]:
         """Get sound card information as a dictionary
-        
+
         Uses aplay -l as the highest priority source for detection,
         ensuring we always show the actual loaded ALSA driver.
         """
         try:
             # Use Soundcard with aplay priority to ensure we detect the actual loaded driver
             soundcard = self._get_soundcard(prioritize_aplay=True)
-            
+
             # Check if the detected card is actually configured/loaded correctly
             fixed_in_config_txt = self._is_soundcard_fixed_in_config_txt(soundcard)
             pin_source = self._get_soundcard_pin_source()
@@ -235,14 +235,14 @@ class SystemInfo:
                 'fixedInConfigTxt': fixed_in_config_txt,
                 'pinSource': pin_source
             }
-            
+
             return result
-            
+
         except Exception as e:
             self.logger.error(f"Failed to get sound card info: {e}")
             import traceback
             traceback.print_exc()
-            
+
             return {
                 'name': 'unknown',
                 'volume_control': None,
@@ -256,7 +256,7 @@ class SystemInfo:
                 'card_type': [],
                 'fixedInConfigTxt': False
             }
-    
+
     def get_system_info_dict(self) -> dict[str, Any]:
         """Get all system information as a structured dictionary"""
         try:
@@ -266,7 +266,7 @@ class SystemInfo:
             soundcard_info = self.get_soundcard_info()
             hostname, pretty_hostname = self._get_hostname_info()
             memory_info = self._get_memory_info()
-            
+
             return {
                 'pi_model': {
                     'name': pi_model.get_model_name().strip('\x00'),  # Remove null characters
@@ -324,7 +324,7 @@ class SystemInfo:
                 'status': 'error',
                 'error': str(e)
             }
-    
+
     def get_flat_info_dict(self) -> dict[str, Any]:
         """Get all system information as a flat name-value dictionary"""
         try:
@@ -334,7 +334,7 @@ class SystemInfo:
             soundcard_info = self.get_soundcard_info()
             hostname, pretty_hostname = self._get_hostname_info()
             memory_info = self._get_memory_info()
-            
+
             # Build Pi Model string (name + version)
             pi_model_name = pi_model.get_model_name().strip('\x00')  # Remove null characters
             pi_version = getattr(pi_model, 'version', 'unknown')
@@ -342,19 +342,19 @@ class SystemInfo:
                 pi_model_full = f"{pi_model_name} {pi_version}"
             else:
                 pi_model_full = pi_model_name
-            
+
             # Build HAT string (vendor + product)
             vendor = hat_info.get('vendor') or 'unknown'
             product = hat_info.get('product') or 'unknown'
             hat_full = f"{vendor} {product}"
-            
+
             # Format memory info
             memory_str = 'unknown'
             if memory_info.get('total_gb'):
                 memory_str = f"{memory_info['total_gb']} GB ({memory_info['total_mb']} MB)"
             elif memory_info.get('total_mb'):
                 memory_str = f"{memory_info['total_mb']} MB"
-            
+
             flat_dict: dict[str, Any] = {
                 'Pi Model': pi_model_full,
                 'Memory': memory_str,
@@ -364,7 +364,7 @@ class SystemInfo:
                 'Hostname': hostname or 'unknown',
                 'Pretty Hostname': pretty_hostname or 'not set'
             }
-            
+
             return flat_dict
         except Exception as e:
             self.logger.error(f"Failed to collect system info: {e}")
@@ -377,20 +377,20 @@ class SystemInfo:
                 'Hostname': 'unknown',
                 'Pretty Hostname': 'unknown'
             }
-    
+
     def get_simple_output(self) -> str:
         """Get simple text output format"""
         pi_model_name = self.get_pi_model_name()
         hat_vendor_card = self.get_hat_vendor_card()
         system_uuid = self.get_system_uuid()
         soundcard_info = self.get_soundcard_info()
-        
+
         output = f"Pi Model: {pi_model_name}\nHat info: {hat_vendor_card}\nSound Card: {soundcard_info.get('name', 'unknown')}"
         if system_uuid:
             output += f"\nSystem UUID: {system_uuid}"
-        
+
         return output
-    
+
     def print_simple_output(self):
         """Print the simple output to stdout"""
         print(self.get_simple_output())
@@ -399,23 +399,23 @@ class SystemInfo:
 def setup_logging(verbose: bool = False) -> None:
     """Configure logging"""
     log_level = logging.DEBUG if verbose else logging.WARNING
-    
+
     # Configure root logger
     root_logger = logging.getLogger()
     root_logger.setLevel(log_level)
-    
+
     # Remove existing handlers if any
     for handler in root_logger.handlers[:]:
         root_logger.removeHandler(handler)
-    
+
     # Create console handler
     console_handler = logging.StreamHandler(stream=sys.stderr)
     console_handler.setLevel(log_level)
-    
+
     # Create formatter
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     console_handler.setFormatter(formatter)
-    
+
     # Add handler to logger
     root_logger.addHandler(console_handler)
 
@@ -423,25 +423,25 @@ def setup_logging(verbose: bool = False) -> None:
 def parse_arguments():
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(description='HiFiBerry System Information')
-    
+
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='Enable verbose logging')
     parser.add_argument('--json', action='store_true',
                         help='Output as JSON instead of simple text')
-    
+
     return parser.parse_args()
 
 
 def main():
     """Main function for command line usage"""
     args = parse_arguments()
-    
+
     # Configure logging
     setup_logging(args.verbose)
-    
+
     # Create system info collector
     sys_info = SystemInfo()
-    
+
     if args.json:
         import json
         # Output as JSON with flat name-value structure

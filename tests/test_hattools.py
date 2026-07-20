@@ -19,7 +19,7 @@ from io import StringIO
 # Add repository root to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.hattools import (
+from src.configurator.hattools import (
     get_hat_info, main,
     DEFAULT_VENDOR, DEFAULT_PRODUCT, DEFAULT_UUID
 )

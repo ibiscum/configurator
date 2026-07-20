@@ -13,7 +13,7 @@ except ImportError:
     argcomplete_available = False
 
 # Import the get_hat_info function from hattools
-from src.hattools import get_hat_info
+from src.configurator.hattools import get_hat_info
 
 # Constants
 UNKNOWN_CARD_NAME = "Unknown"
@@ -200,7 +200,7 @@ SOUND_CARD_DEFINITIONS: dict[str, dict[str, Any]] = {
     },
     "DAC+ Pro": {
         "aplay_contains": "DAC+ Pro",
-        "hat_name": "DAC+ Pro", 
+        "hat_name": "DAC+ Pro",
         "volume_control": "Digital",
         "output_channels": 2,
         "input_channels": 0,
@@ -351,7 +351,7 @@ SOUND_CARD_DEFINITIONS: dict[str, dict[str, Any]] = {
 def list_all_sound_cards(output_format: str = "table") -> None:
     """
     List all available HiFiBerry sound cards with their device tree overlays.
-    
+
     Args:
         output_format: Output format - "table" or "csv"
     """
@@ -364,22 +364,22 @@ def list_all_sound_cards(output_format: str = "table") -> None:
             features = ";".join(attributes.get("features", []))
             card_types = ";".join(attributes.get("card_type", []))
             supports_dsp = "Yes" if attributes.get("supports_dsp", False) else "No"
-            
+
             print(f'"{card_name}","{dtoverlay}","{volume_control}",'
                   f'{attributes.get("output_channels", 0)},{attributes.get("input_channels", 0)},'
                   f'"{features}","{supports_dsp}","{card_types}"')
-    
+
     else:
         # Table format (default)
         print("Available HiFiBerry Sound Cards:")
         print("=" * 70)
         print(f"{'Sound Card Name':<30} {'Device Tree Overlay':<30}")
         print("-" * 70)
-        
+
         for card_name, attributes in SOUND_CARD_DEFINITIONS.items():
             dtoverlay = attributes.get("dtoverlay", "unknown")
             print(f"{card_name:<30} {dtoverlay:<30}")
-        
+
         print("-" * 70)
         print(f"Total: {len(SOUND_CARD_DEFINITIONS)} sound cards")
 
@@ -404,7 +404,7 @@ class Soundcard:
                 detected_card = self._detect_card_aplay_priority(no_eeprom=no_eeprom)
             else:
                 detected_card = self._detect_card(no_eeprom=no_eeprom)
-                
+
             if detected_card:
                 self.name = detected_card["name"]
                 self.volume_control = detected_card.get("volume_control")
@@ -449,29 +449,29 @@ class Soundcard:
         """
         Perform additional checks to refine sound card detection based on aplay output
         and hardware-specific features.
-        
+
         Args:
             aplay_output: Output from aplay -l command
             initial_detection: Initial card detection result from pattern matching
-            
+
         Returns:
             Refined card detection result or original if no refinement needed
         """
         if not initial_detection:
             return initial_detection
-            
+
         # Check for DAC+ Pro vs DAC2 Pro distinction
         # This handles both direct matches and cases where "DAC+/Amp2" was detected first
-        if (initial_detection["name"] in ["DAC+ Pro", "DAC2 Pro", "DAC+/Amp2"] and 
+        if (initial_detection["name"] in ["DAC+ Pro", "DAC2 Pro", "DAC+/Amp2"] and
             "dacplus" in aplay_output.lower()):
             return self._distinguish_dac_pro_models(aplay_output, initial_detection)
-            
+
         return initial_detection
-    
+
     def _distinguish_dac_pro_models(self, aplay_output: str, initial_detection: dict[str, Any]) -> dict[str, Any]:
         """
         Distinguish between DAC+ Pro and DAC2 Pro based on headphone mixer control.
-        
+
         DAC2 Pro has a 'Headphone' mixer control, DAC+ Pro does not.
         """
         try:
@@ -479,7 +479,7 @@ class Soundcard:
             if "HiFiBerry DAC+ Pro" not in aplay_output:
                 # If not a DAC+ Pro, return original detection
                 return initial_detection
-            
+
             # Extract card number from aplay output
             card_number = None
             for line in aplay_output.split('\n'):
@@ -495,14 +495,14 @@ class Soundcard:
                                     break
                                 except (ValueError, IndexError):
                                     continue
-            
+
             if card_number is not None:
                 # Check for headphone mixer control
                 amixer_output = subprocess.check_output(
-                    f"amixer -c {card_number} | grep -i head", 
+                    f"amixer -c {card_number} | grep -i head",
                     shell=True, text=True
                 ).strip()
-                
+
                 if "Headphone" in amixer_output:
                     logging.info("Detected DAC2 Pro (has Headphone mixer control)")
                     # Return DAC2 Pro configuration
@@ -511,16 +511,16 @@ class Soundcard:
                             return {"name": card_name, **attributes}
                 else:
                     logging.info("Detected DAC+ Pro (no Headphone mixer control)")
-                    # Return DAC+ Pro configuration  
+                    # Return DAC+ Pro configuration
                     for card_name, attributes in SOUND_CARD_DEFINITIONS.items():
                         if card_name == "DAC+ Pro":
                             return {"name": card_name, **attributes}
-                            
+
         except subprocess.CalledProcessError:
             logging.debug("Could not run amixer command for DAC Pro distinction")
         except Exception as e:
             logging.debug(f"Error during DAC Pro distinction: {e}")
-            
+
         # If we can't determine, return the initial detection
         return initial_detection
 
@@ -528,18 +528,18 @@ class Soundcard:
         """
         Detect sound card using SoundcardDetector which includes config database override,
         HAT EEPROM, I2C, aplay, and DSP detection.
-        
+
         Returns:
             Dictionary with card attributes or None if not detected
         """
         try:
-            from src.soundcard_detector import SoundcardDetector
-            
+            from src.configurator.soundcard_detector import SoundcardDetector
+
             # Use SoundcardDetector for comprehensive detection
             # Enable pcm5102 detection to support DAC+ Zero/Light cards
             detector = SoundcardDetector(include_pcm5102=True)
             detector.detect_card()
-            
+
             # Check if a card was detected
             if detector.detected_card:  # type: ignore[name-defined]
                 # Try the full detected name first (before splitting)
@@ -576,14 +576,14 @@ class Soundcard:
                             if detected_name in aliases:
                                 logging.info(f"Detected sound card via alias: {detected_name} -> {card_name}")
                                 return {"name": card_name, **attributes}
-                
+
                 # If not found in definitions or aliases, log warning and return None
                 logging.warning(f"Detected card '{detector.detected_card}' not found in SOUND_CARD_DEFINITIONS or aliases")  # type: ignore[attr-defined]
                 return None
             else:
                 logging.warning("No matching sound card detected.")
                 return None
-                
+
         except Exception as e:
             logging.error(f"Error during sound card detection: {str(e)}")
             return None
@@ -591,18 +591,18 @@ class Soundcard:
     def _detect_card_aplay_priority(self, no_eeprom: bool = False) -> Optional[dict[str, Any]]:
         """
         Detect sound card with aplay -l as the highest priority source.
-        
+
         This method prioritizes the actual loaded ALSA driver from aplay -l output
         over other detection methods, as this represents the real running soundcard.
         First checks config.txt for fixed card comment, then uses additional detection
         methods (HAT EEPROM, I2C) only for disambiguation.
-        
+
         Returns:
             Dictionary with card attributes or None if not detected
         """
         try:
-            from src.soundcard_detector import SoundcardDetector
-            
+            from src.configurator.soundcard_detector import SoundcardDetector
+
             # Step 0: Check if there's a fixed card name in config.txt comment
             try:
                 detector = SoundcardDetector()
@@ -621,7 +621,7 @@ class Soundcard:
                     logging.warning(f"Card '{config_card_name}' from config.txt not found in definitions")
             except Exception as e:
                 logging.debug(f"Could not read config.txt comment: {e}")
-            
+
             # Step 1: Get the actual loaded ALSA driver from aplay -l (highest priority)
             detected_overlay = None
             try:
@@ -638,7 +638,7 @@ class Soundcard:
                                 break
             except Exception as e:
                 logging.warning(f"Could not get aplay output: {e}")
-            
+
             # Step 2: If we have an overlay from aplay, use it to get the card definition
             if detected_overlay:
                 # Use SoundcardDetector to get additional info (HAT name, etc.) for disambiguation
@@ -646,7 +646,7 @@ class Soundcard:
                 detector.detect_card()
                 hat_card = None
                 has_hat_info = False
-                
+
                 # Check if we have HAT info that can help with disambiguation
                 try:
                     hat_info = get_hat_info()
@@ -655,30 +655,30 @@ class Soundcard:
                         has_hat_info = True
                 except (OSError, AttributeError):
                     pass
-                
+
                 # Get the card name based on the overlay, using HAT info if available
                 card_name = detector._get_card_name(detected_overlay, hat_product=hat_card, no_hat_only=not has_hat_info)  # type: ignore[attr-defined]
-                
+
                 if card_name:
                     # Try exact match first
                     if card_name in SOUND_CARD_DEFINITIONS:
                         logging.info(f"Detected sound card (aplay priority): {card_name}")
                         return {"name": card_name, **SOUND_CARD_DEFINITIONS[card_name]}
-                    
+
                     # Try alias matching if exact match failed
                     for def_name, attributes in SOUND_CARD_DEFINITIONS.items():
                         aliases = attributes.get('aliases', [])
                         if card_name in aliases:
                             logging.info(f"Detected sound card via alias (aplay priority): {card_name} -> {def_name}")
                             return {"name": def_name, **attributes}
-                    
+
                     # If not found in definitions, log warning
                     logging.warning(f"Card name '{card_name}' from aplay not found in SOUND_CARD_DEFINITIONS")
-            
+
             # Step 3: Fallback to original detection method if aplay didn't work
             logging.info("aplay detection did not yield results, falling back to standard detection")
             return self._detect_card(no_eeprom=no_eeprom)
-                
+
         except Exception as e:
             logging.error(f"Error during aplay-priority sound card detection: {str(e)}")
             # Final fallback to standard detection
@@ -712,18 +712,18 @@ class Soundcard:
         """
         try:
             import alsaaudio  # type: ignore[import-untyped]
-            
+
             # Check pyalsaaudio version by checking available methods
             # Version 0.9+ uses card_indexes() while 0.8 uses cards()
             if hasattr(alsaaudio, 'card_indexes'):
                 # pyalsaaudio 0.9+
                 cards = alsaaudio.card_indexes()  # type: ignore[attr-defined]
-                
+
                 # Loop through each card and check if it's a HiFiBerry
                 for card_index in cards:  # type: ignore[union-attr]
                     try:
                         card_name_result = alsaaudio.card_name(card_index)  # type: ignore[attr-defined]
-                        
+
                         # Handle different return types from card_name()
                         if isinstance(card_name_result, tuple):
                             # Some versions return a tuple (long_name, short_name)
@@ -737,7 +737,7 @@ class Soundcard:
                             # Unknown return type, convert to string first
                             logging.warning(f"Unexpected type from card_name(): {type(card_name_result)}")  # type: ignore[arg-type]
                             card_name = str(card_name_result).lower()  # type: ignore[arg-type]
-                        
+
                         if 'hifiberry' in card_name:
                             logging.info(f"Found HiFiBerry card at index {card_index}: {card_name}")
                             return card_index  # type: ignore[return-value]
@@ -747,19 +747,19 @@ class Soundcard:
             else:
                 # pyalsaaudio 0.8
                 cards = alsaaudio.cards()  # type: ignore[attr-defined]
-                
+
                 # In 0.8, cards() returns a list of card names
                 for i, card_name in enumerate(cards):  # type: ignore[arg-type]
                     if 'hifiberry' in card_name.lower():  # type: ignore[union-attr]
                         logging.info(f"Found HiFiBerry card at index {i}: {card_name}")
                         return i
-            
+
             # Fall back to shell command if no card was found via alsaaudio
             return self._get_hardware_index_fallback()
         except ImportError:
             logging.warning("alsaaudio module not available, falling back to shell command")
             return self._get_hardware_index_fallback()
-    
+
     def _get_hardware_index_fallback(self):
         """
         Fallback method to get hardware index using shell commands.
@@ -779,7 +779,7 @@ class Soundcard:
                                 return card_index
                             except (ValueError, IndexError):
                                 logging.warning(f"Could not parse card index from: {line}")
-            
+
             return None
         except subprocess.CalledProcessError:
             logging.error("Error running aplay -l command")
@@ -788,16 +788,16 @@ class Soundcard:
     def create_dummy_alsa_control(self, control_name: str) -> bool:
         """
         Create a dummy ALSA mixer control using a state file.
-        
+
         This creates a software mixer control that can be used for volume control
         when the sound card doesn't provide hardware volume controls.
-        
+
         Args:
             control_name (str): Name of the mixer control to create
-            
+
         Returns:
             bool: True if the control was created successfully, False otherwise
-            
+
         Raises:
             Exception: If there's an error creating the control
         """
@@ -806,25 +806,25 @@ class Soundcard:
             if self._check_mixer_control_exists(control_name):
                 logging.info(f"ALSA mixer control '{control_name}' already exists")
                 return True
-            
+
             # Create temporary state file
             with tempfile.NamedTemporaryFile(mode='w', dir="/tmp", delete=False, suffix='.state') as statefile:
                 content = ALSA_STATE_FILE_TEMPLATE.replace('%CONTROL_NAME%', control_name)
                 logging.debug(f"Creating ALSA state file with content:\n{content}")
                 statefile.write(content)
                 statefile.flush()
-                
+
                 # Apply the state file using alsactl
                 command = f"/usr/sbin/alsactl -f {statefile.name} restore"
                 logging.debug(f"Running command: {command}")
-                
+
                 result = subprocess.run(command, shell=True, capture_output=True, text=True)
-                
+
                 # Note: alsactl may return non-zero exit codes for warnings, not just errors
                 # We should check if the control was actually created rather than just the exit code
                 if result.returncode != 0:
                     logging.warning(f"alsactl returned non-zero exit code: {result.stderr}")
-                
+
                 # Verify the control was created (this is the definitive test)
                 if self._check_mixer_control_exists(control_name):
                     logging.info(f"Successfully created ALSA mixer control '{control_name}'")
@@ -834,7 +834,7 @@ class Soundcard:
                     if result.returncode != 0:
                         logging.error(f"alsactl error: {result.stderr}")
                     return False
-                    
+
         except Exception as e:
             logging.error(f"Error creating ALSA mixer control '{control_name}': {str(e)}")
             return False
@@ -849,10 +849,10 @@ class Soundcard:
     def _check_mixer_control_exists(self, control_name: str) -> bool:
         """
         Check if a mixer control exists on the sound card.
-        
+
         Args:
             control_name (str): Name of the mixer control to check
-            
+
         Returns:
             bool: True if the control exists, False otherwise
         """
@@ -866,7 +866,7 @@ class Soundcard:
                     return control_name in mixers
             except ImportError:
                 logging.debug("alsaaudio not available, using amixer command")
-            
+
             # Fallback to amixer command
             hw_index = self.get_hardware_index()
             if hw_index is not None:
@@ -876,9 +876,9 @@ class Soundcard:
                     capture_output=True
                 )
                 return result.returncode == 0
-            
+
             return False
-            
+
         except Exception as e:
             logging.debug(f"Error checking mixer control '{control_name}': {str(e)}")
             return False
@@ -886,21 +886,21 @@ class Soundcard:
     def get_or_create_volume_control(self, preferred_name: Optional[str] = None) -> Optional[str]:
         """
         Get the existing volume control or create a dummy one if none exists.
-        
+
         Args:
             preferred_name (str, optional): Preferred name for the volume control.
                                           Defaults to "Softvol" if not specified.
-            
+
         Returns:
             str or None: Name of the volume control, or None if creation failed
         """
         # If the card already has a hardware volume control, use it
         if self.volume_control:
             return self.volume_control
-        
+
         # Determine the control name to create
         control_name = preferred_name or "Softvol"
-        
+
         # Try to create the dummy control
         if self.create_dummy_alsa_control(control_name):
             return control_name
@@ -1007,10 +1007,10 @@ def main():
         action="store_true",
         help="Print the name of the detected sound card if one is found, nothing otherwise. Exit code 1 if no card detected.",
     )
-    
+
     if argcomplete_available:
         argcomplete.autocomplete(parser)  # type: ignore[name-defined]
-    
+
     args = parser.parse_args()
 
     # Configure logging immediately after parsing args
@@ -1018,7 +1018,7 @@ def main():
     root_logger = logging.getLogger()
     for handler in root_logger.handlers[:]:
         root_logger.removeHandler(handler)
-    
+
     if args.very_verbose:
         logging.basicConfig(level=logging.DEBUG, stream=sys.stderr, force=True)
     elif args.verbose:

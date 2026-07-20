@@ -35,7 +35,7 @@ flask_mock.Response = MockResponse
 flask_mock.request = MagicMock()
 sys.modules['flask'] = flask_mock
 
-from src.handlers.system_handler import SystemHandler  # noqa: E402
+from src.configurator.handlers.system_handler import SystemHandler  # noqa: E402
 
 
 def get_response(result):

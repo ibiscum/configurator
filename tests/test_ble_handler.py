@@ -52,7 +52,7 @@ flask_mock.jsonify = mock_jsonify
 flask_mock.Response = MockResponse
 sys.modules['flask'] = flask_mock
 
-from src.handlers.ble_handler import BLEProvisioningHandler  # noqa: E402
+from configurator.handlers.ble_handler import BLEProvisioningHandler  # noqa: E402
 
 
 class TestBLEProvisioningHandlerGetStatus(unittest.TestCase):
@@ -62,7 +62,7 @@ class TestBLEProvisioningHandlerGetStatus(unittest.TestCase):
         """Set up test fixtures"""
         self.handler = BLEProvisioningHandler()
 
-    @patch('src.handlers.ble_handler.subprocess.run')
+    @patch('configurator.handlers.ble_handler.subprocess.run')
     def test_get_status_active(self, mock_run):
         """Test getting status when service is active"""
         mock_result = Mock()
@@ -79,7 +79,7 @@ class TestBLEProvisioningHandlerGetStatus(unittest.TestCase):
         self.assertEqual(data['data']['state'], 'active')
         mock_run.assert_called_once()
 
-    @patch('src.handlers.ble_handler.subprocess.run')
+    @patch('configurator.handlers.ble_handler.subprocess.run')
     def test_get_status_inactive(self, mock_run):
         """Test getting status when service is inactive"""
         mock_result = Mock()
@@ -95,7 +95,7 @@ class TestBLEProvisioningHandlerGetStatus(unittest.TestCase):
         self.assertFalse(data['data']['active'])
         self.assertEqual(data['data']['state'], 'unknown')
 
-    @patch('src.handlers.ble_handler.subprocess.run')
+    @patch('configurator.handlers.ble_handler.subprocess.run')
     def test_get_status_command_timeout(self, mock_run):
         """Test status check with timeout exception"""
         mock_run.side_effect = TimeoutError("Command timed out")
@@ -107,7 +107,7 @@ class TestBLEProvisioningHandlerGetStatus(unittest.TestCase):
         self.assertEqual(data['status'], 'error')
         self.assertIn('Command timed out', data['message'])
 
-    @patch('src.handlers.ble_handler.subprocess.run')
+    @patch('configurator.handlers.ble_handler.subprocess.run')
     def test_get_status_command_error(self, mock_run):
         """Test status check with generic exception"""
         mock_run.side_effect = Exception("systemctl not found")
@@ -119,7 +119,7 @@ class TestBLEProvisioningHandlerGetStatus(unittest.TestCase):
         self.assertEqual(data['status'], 'error')
         self.assertIn('systemctl not found', data['message'])
 
-    @patch('src.handlers.ble_handler.subprocess.run')
+    @patch('configurator.handlers.ble_handler.subprocess.run')
     def test_get_status_call_parameters(self, mock_run):
         """Test that get_status calls systemctl with correct parameters"""
         mock_result = Mock()
@@ -145,7 +145,7 @@ class TestBLEProvisioningHandlerStart(unittest.TestCase):
         """Set up test fixtures"""
         self.handler = BLEProvisioningHandler()
 
-    @patch('src.handlers.ble_handler.subprocess.run')
+    @patch('configurator.handlers.ble_handler.subprocess.run')
     def test_start_success(self, mock_run):
         """Test successful start of BLE provisioning"""
         mock_result = Mock()
@@ -161,7 +161,7 @@ class TestBLEProvisioningHandlerStart(unittest.TestCase):
         self.assertEqual(data['status'], 'success')
         self.assertIn('started', data['message'].lower())
 
-    @patch('src.handlers.ble_handler.subprocess.run')
+    @patch('configurator.handlers.ble_handler.subprocess.run')
     def test_start_failure(self, mock_run):
         """Test failed start of BLE provisioning"""
         mock_result = Mock()
@@ -176,7 +176,7 @@ class TestBLEProvisioningHandlerStart(unittest.TestCase):
         self.assertEqual(data.get_json()['status'], 'error')
         self.assertIn('Failed to start', data.get_json()['message'])
 
-    @patch('src.handlers.ble_handler.subprocess.run')
+    @patch('configurator.handlers.ble_handler.subprocess.run')
     def test_start_exception(self, mock_run):
         """Test start with exception"""
         mock_run.side_effect = Exception("Permission denied")
@@ -188,7 +188,7 @@ class TestBLEProvisioningHandlerStart(unittest.TestCase):
         self.assertEqual(data.get_json()['status'], 'error')
         self.assertIn('Permission denied', data.get_json()['message'])
 
-    @patch('src.handlers.ble_handler.subprocess.run')
+    @patch('configurator.handlers.ble_handler.subprocess.run')
     def test_start_creates_override(self, mock_run):
         """Test that start creates systemd override directory"""
         mock_result = Mock()
@@ -204,7 +204,7 @@ class TestBLEProvisioningHandlerStart(unittest.TestCase):
         self.assertEqual(mkdir_call[0][0][0], "mkdir")
         self.assertIn("-p", mkdir_call[0][0])
 
-    @patch('src.handlers.ble_handler.subprocess.run')
+    @patch('configurator.handlers.ble_handler.subprocess.run')
     def test_start_creates_override_config(self, mock_run):
         """Test that start creates override configuration"""
         mock_result = Mock()
@@ -221,7 +221,7 @@ class TestBLEProvisioningHandlerStart(unittest.TestCase):
         self.assertEqual(echo_call[0][0][1], "-c")
         self.assertIn("ExecStartPre=", echo_call[0][0][2])
 
-    @patch('src.handlers.ble_handler.subprocess.run')
+    @patch('configurator.handlers.ble_handler.subprocess.run')
     def test_start_daemon_reload(self, mock_run):
         """Test that start calls daemon-reload"""
         mock_result = Mock()
@@ -237,7 +237,7 @@ class TestBLEProvisioningHandlerStart(unittest.TestCase):
         self.assertEqual(daemon_reload_call[0][0][0], "systemctl")
         self.assertEqual(daemon_reload_call[0][0][1], "daemon-reload")
 
-    @patch('src.handlers.ble_handler.subprocess.run')
+    @patch('configurator.handlers.ble_handler.subprocess.run')
     def test_start_calls_systemctl_start(self, mock_run):
         """Test that start calls systemctl start"""
         mock_result = Mock()
@@ -254,7 +254,7 @@ class TestBLEProvisioningHandlerStart(unittest.TestCase):
         self.assertEqual(start_call[0][0][1], "start")
         self.assertEqual(start_call[0][0][2], "ble-provisioning")
 
-    @patch('src.handlers.ble_handler.subprocess.run')
+    @patch('configurator.handlers.ble_handler.subprocess.run')
     def test_start_check_parameter(self, mock_run):
         """Test that all subprocess calls use check=False"""
         mock_result = Mock()
@@ -277,7 +277,7 @@ class TestBLEProvisioningHandlerStop(unittest.TestCase):
         """Set up test fixtures"""
         self.handler = BLEProvisioningHandler()
 
-    @patch('src.handlers.ble_handler.subprocess.run')
+    @patch('configurator.handlers.ble_handler.subprocess.run')
     def test_stop_success(self, mock_run):
         """Test successful stop of BLE provisioning"""
         mock_result = Mock()
@@ -293,7 +293,7 @@ class TestBLEProvisioningHandlerStop(unittest.TestCase):
         self.assertEqual(data['status'], 'success')
         self.assertIn('stopped', data['message'].lower())
 
-    @patch('src.handlers.ble_handler.subprocess.run')
+    @patch('configurator.handlers.ble_handler.subprocess.run')
     def test_stop_failure(self, mock_run):
         """Test failed stop of BLE provisioning"""
         mock_result = Mock()
@@ -308,7 +308,7 @@ class TestBLEProvisioningHandlerStop(unittest.TestCase):
         self.assertEqual(data.get_json()['status'], 'error')
         self.assertIn('Failed to stop', data.get_json()['message'])
 
-    @patch('src.handlers.ble_handler.subprocess.run')
+    @patch('configurator.handlers.ble_handler.subprocess.run')
     def test_stop_exception(self, mock_run):
         """Test stop with exception"""
         mock_run.side_effect = Exception("Connection refused")
@@ -320,7 +320,7 @@ class TestBLEProvisioningHandlerStop(unittest.TestCase):
         self.assertEqual(data.get_json()['status'], 'error')
         self.assertIn('Connection refused', data.get_json()['message'])
 
-    @patch('src.handlers.ble_handler.subprocess.run')
+    @patch('configurator.handlers.ble_handler.subprocess.run')
     def test_stop_calls_systemctl_stop(self, mock_run):
         """Test that stop calls systemctl stop"""
         mock_result = Mock()
@@ -337,7 +337,7 @@ class TestBLEProvisioningHandlerStop(unittest.TestCase):
         self.assertEqual(stop_call[0][0][1], "stop")
         self.assertEqual(stop_call[0][0][2], "ble-provisioning")
 
-    @patch('src.handlers.ble_handler.subprocess.run')
+    @patch('configurator.handlers.ble_handler.subprocess.run')
     def test_stop_removes_override_directory(self, mock_run):
         """Test that stop removes systemd override directory"""
         mock_result = Mock()
@@ -354,7 +354,7 @@ class TestBLEProvisioningHandlerStop(unittest.TestCase):
         self.assertEqual(rm_call[0][0][1], "-rf")
         self.assertIn("ble-provisioning", rm_call[0][0][2])
 
-    @patch('src.handlers.ble_handler.subprocess.run')
+    @patch('configurator.handlers.ble_handler.subprocess.run')
     def test_stop_daemon_reload(self, mock_run):
         """Test that stop calls daemon-reload"""
         mock_result = Mock()
@@ -370,7 +370,7 @@ class TestBLEProvisioningHandlerStop(unittest.TestCase):
         self.assertEqual(daemon_reload_call[0][0][0], "systemctl")
         self.assertEqual(daemon_reload_call[0][0][1], "daemon-reload")
 
-    @patch('src.handlers.ble_handler.subprocess.run')
+    @patch('configurator.handlers.ble_handler.subprocess.run')
     def test_stop_check_parameter(self, mock_run):
         """Test that all subprocess calls use check=False"""
         mock_result = Mock()
@@ -393,7 +393,7 @@ class TestBLEProvisioningHandlerReturnTypes(unittest.TestCase):
         """Set up test fixtures"""
         self.handler = BLEProvisioningHandler()
 
-    @patch('src.handlers.ble_handler.subprocess.run')
+    @patch('configurator.handlers.ble_handler.subprocess.run')
     def test_get_status_returns_response(self, mock_run):
         """Test that get_status returns Response"""
         mock_result = Mock()
@@ -406,7 +406,7 @@ class TestBLEProvisioningHandlerReturnTypes(unittest.TestCase):
         self.assertTrue(hasattr(result, 'get_json'))
         self.assertTrue(callable(result.get_json))
 
-    @patch('src.handlers.ble_handler.subprocess.run')
+    @patch('configurator.handlers.ble_handler.subprocess.run')
     def test_start_returns_response_or_tuple(self, mock_run):
         """Test that start returns Response or tuple"""
         mock_result = Mock()
@@ -419,7 +419,7 @@ class TestBLEProvisioningHandlerReturnTypes(unittest.TestCase):
         # Should have get_json (Response object)
         self.assertTrue(hasattr(result, 'get_json'))
 
-    @patch('src.handlers.ble_handler.subprocess.run')
+    @patch('configurator.handlers.ble_handler.subprocess.run')
     def test_start_error_returns_tuple(self, mock_run):
         """Test that start error returns tuple with status code"""
         mock_result = Mock()
@@ -433,7 +433,7 @@ class TestBLEProvisioningHandlerReturnTypes(unittest.TestCase):
         self.assertEqual(len(result), 2)
         self.assertEqual(result[1], 500)
 
-    @patch('src.handlers.ble_handler.subprocess.run')
+    @patch('configurator.handlers.ble_handler.subprocess.run')
     def test_stop_returns_response_or_tuple(self, mock_run):
         """Test that stop returns Response or tuple"""
         mock_result = Mock()
@@ -446,7 +446,7 @@ class TestBLEProvisioningHandlerReturnTypes(unittest.TestCase):
         # Should have get_json (Response object)
         self.assertTrue(hasattr(result, 'get_json'))
 
-    @patch('src.handlers.ble_handler.subprocess.run')
+    @patch('configurator.handlers.ble_handler.subprocess.run')
     def test_stop_error_returns_tuple(self, mock_run):
         """Test that stop error returns tuple with status code"""
         mock_result = Mock()
@@ -468,7 +468,7 @@ class TestBLEProvisioningHandlerEdgeCases(unittest.TestCase):
         """Set up test fixtures"""
         self.handler = BLEProvisioningHandler()
 
-    @patch('src.handlers.ble_handler.subprocess.run')
+    @patch('configurator.handlers.ble_handler.subprocess.run')
     def test_get_status_with_empty_stdout(self, mock_run):
         """Test get_status when stdout is empty"""
         mock_result = Mock()
@@ -481,7 +481,7 @@ class TestBLEProvisioningHandlerEdgeCases(unittest.TestCase):
 
         self.assertEqual(data['data']['state'], 'unknown')
 
-    @patch('src.handlers.ble_handler.subprocess.run')
+    @patch('configurator.handlers.ble_handler.subprocess.run')
     def test_start_with_stderr_in_error_response(self, mock_run):
         """Test that start includes stderr in error message"""
         mock_result = Mock()
@@ -494,7 +494,7 @@ class TestBLEProvisioningHandlerEdgeCases(unittest.TestCase):
 
         self.assertIn("Critical error message", data.get_json()['message'])
 
-    @patch('src.handlers.ble_handler.subprocess.run')
+    @patch('configurator.handlers.ble_handler.subprocess.run')
     def test_stop_with_stderr_in_error_response(self, mock_run):
         """Test that stop includes stderr in error message"""
         mock_result = Mock()
@@ -507,7 +507,7 @@ class TestBLEProvisioningHandlerEdgeCases(unittest.TestCase):
 
         self.assertIn("Another error", data.get_json()['message'])
 
-    @patch('src.handlers.ble_handler.subprocess.run')
+    @patch('configurator.handlers.ble_handler.subprocess.run')
     def test_get_status_with_extra_whitespace(self, mock_run):
         """Test get_status strips whitespace from stdout"""
         mock_result = Mock()
@@ -520,7 +520,7 @@ class TestBLEProvisioningHandlerEdgeCases(unittest.TestCase):
 
         self.assertEqual(data['data']['state'], 'active')
 
-    @patch('src.handlers.ble_handler.subprocess.run')
+    @patch('configurator.handlers.ble_handler.subprocess.run')
     def test_multiple_sequential_operations(self, mock_run):
         """Test multiple sequential operations"""
         mock_result = Mock()

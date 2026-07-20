@@ -35,7 +35,7 @@ flask_mock.request = MagicMock()
 flask_mock.Response = MockResponse
 sys.modules["flask"] = flask_mock
 
-from src.handlers.i2c_handler import I2CHandler  # noqa: E402  # pylint: disable=wrong-import-position
+from src.configurator.handlers.i2c_handler import I2CHandler  # noqa: E402  # pylint: disable=wrong-import-position
 importlib.reload(sys.modules["src.handlers.i2c_handler"])
 
 

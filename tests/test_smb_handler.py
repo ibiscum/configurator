@@ -63,7 +63,7 @@ flask_mock.Response = MockResponse
 sys.modules['flask'] = flask_mock
 
 # pylint: disable=wrong-import-position
-from src.handlers.smb_handler import (  # noqa: E402
+from src.configurator.handlers.smb_handler import (  # noqa: E402
     SMBHandler,
     load_mount_state,
     save_mount_state,
@@ -113,7 +113,7 @@ class TestSMBHandlerStateManagement(unittest.TestCase):
     def test_save_state_valid(self):
         """Test saving valid state to JSON file"""
         test_state = {'server/share': '/mnt/test', 'server2/share2': '/mnt/test2'}
-        
+
         with patch('src.handlers.smb_handler.SAMBA_STATE_FILE', self.state_file):
             save_mount_state(test_state)
 

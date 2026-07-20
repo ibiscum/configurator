@@ -8,7 +8,7 @@ error handling, and data formatting.
 import unittest
 from unittest.mock import patch, MagicMock, mock_open
 
-from src.systeminfo import SystemInfo
+from src.configurator.systeminfo import SystemInfo
 
 
 class TestSystemInfoInitialization(unittest.TestCase):

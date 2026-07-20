@@ -36,7 +36,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 sys.modules['src.wifi'] = MagicMock()
 sys.modules['src.network'] = MagicMock()
 
-from src.ble_provisioning import (  # noqa: E402
+from configurator.ble_provisioning import (  # noqa: E402
     BLEProvisioningServer,
     has_network_connectivity,
     setup_logging,
@@ -64,46 +64,46 @@ class TestBLEProvisioningServer:
         }
         assert server._shutdown_requested is False
 
-    @patch("src.ble_provisioning.platform.node")
+    @patch("configurator.ble_provisioning.platform.node")
     def test_get_hostname(self, mock_node, server):
         """Test hostname retrieval"""
         mock_node.return_value = "hifiberry-test"
-        
+
         hostname = server._get_hostname()
-        
+
         assert hostname == "hifiberry-test"
         mock_node.assert_called_once()
 
-    @patch("src.ble_provisioning.platform.node")
+    @patch("configurator.ble_provisioning.platform.node")
     def test_get_device_identity_success(self, mock_node, server):
         """Test device identity retrieval with all components"""
         mock_node.return_value = "hifiberry-01"
-        
-        with patch("src.ble_provisioning.sys"):
+
+        with patch("configurator.ble_provisioning.sys"):
             identity_bytes = server._get_device_identity()
-        
+
         data = json.loads(identity_bytes.decode("utf-8"))
         assert data["hostname"] == "hifiberry-01"
         assert "model" in data
         assert "version" in data
 
-    @patch("src.ble_provisioning.platform.node")
+    @patch("configurator.ble_provisioning.platform.node")
     def test_get_device_identity_minimal(self, mock_node, server):
         """Test device identity with missing optional components"""
         mock_node.return_value = "test-host"
-        
+
         # Mock the version import to return nothing
-        with patch.dict('sys.modules', {'src._version': None}):
+        with patch.dict('sys.modules', {'configurator._version': None}):
             identity_bytes = server._get_device_identity()
-        
+
         data = json.loads(identity_bytes.decode("utf-8"))
         assert data["hostname"] == "test-host"
         assert "model" in data
         assert "version" in data
 
-    @patch("src.ble_provisioning.network.get_network_config")
-    @patch("src.ble_provisioning.wifi.get_current_connection")
-    @patch("src.ble_provisioning.platform.node")
+    @patch("configurator.ble_provisioning.network.get_network_config")
+    @patch("configurator.ble_provisioning.wifi.get_current_connection")
+    @patch("configurator.ble_provisioning.platform.node")
     def test_get_network_status_no_interfaces(
         self, mock_node, mock_get_conn, mock_get_config, server
     ):
@@ -113,17 +113,17 @@ class TestBLEProvisioningServer:
             "hostname": "test-host",
             "interfaces": []
         }
-        
+
         status_bytes = server._get_network_status()
-        
+
         data = json.loads(status_bytes.decode("utf-8"))
         assert data["wifi_connected"] is False
         assert data["eth_connected"] is False
         assert data["hostname"] == "test-host"
 
-    @patch("src.ble_provisioning.network.get_network_config")
-    @patch("src.ble_provisioning.wifi.get_current_connection")
-    @patch("src.ble_provisioning.platform.node")
+    @patch("configurator.ble_provisioning.network.get_network_config")
+    @patch("configurator.ble_provisioning.wifi.get_current_connection")
+    @patch("configurator.ble_provisioning.platform.node")
     def test_get_network_status_wifi_connected(
         self, mock_node, mock_get_conn, mock_get_config, server
     ):
@@ -140,17 +140,17 @@ class TestBLEProvisioningServer:
             ]
         }
         mock_get_conn.return_value = {"ssid": "TestNetwork"}
-        
+
         status_bytes = server._get_network_status()
-        
+
         data = json.loads(status_bytes.decode("utf-8"))
         assert data["wifi_connected"] is True
         assert data["wifi_ip"] == "192.168.1.100"
         assert data["wifi_ssid"] == "TestNetwork"
 
-    @patch("src.ble_provisioning.network.get_network_config")
-    @patch("src.ble_provisioning.wifi.get_current_connection")
-    @patch("src.ble_provisioning.platform.node")
+    @patch("configurator.ble_provisioning.network.get_network_config")
+    @patch("configurator.ble_provisioning.wifi.get_current_connection")
+    @patch("configurator.ble_provisioning.platform.node")
     def test_get_network_status_eth_connected(
         self, mock_node, mock_get_conn, mock_get_config, server
     ):
@@ -166,20 +166,20 @@ class TestBLEProvisioningServer:
                 }
             ]
         }
-        
+
         status_bytes = server._get_network_status()
-        
+
         data = json.loads(status_bytes.decode("utf-8"))
         assert data["eth_connected"] is True
         assert data["eth_ip"] == "10.0.0.50"
 
-    @patch("src.ble_provisioning.network.get_network_config")
+    @patch("configurator.ble_provisioning.network.get_network_config")
     def test_get_network_status_error_handling(self, mock_get_config, server):
         """Test network status with error retrieving config"""
         mock_get_config.side_effect = IOError("Connection error")
-        
+
         status_bytes = server._get_network_status()
-        
+
         data = json.loads(status_bytes.decode("utf-8"))
         # When there's an error, network status should still return valid structure
         assert data["wifi_connected"] is False
@@ -188,9 +188,9 @@ class TestBLEProvisioningServer:
     def test_get_scan_results_bytes_empty(self, server):
         """Test scan results bytes with empty results"""
         server._scan_results = []
-        
+
         results_bytes = server._get_scan_results_bytes()
-        
+
         data = json.loads(results_bytes.decode("utf-8"))
         assert data == []
 
@@ -200,9 +200,9 @@ class TestBLEProvisioningServer:
             {"ssid": "Network1", "signal": -50, "security": "WPA2"},
             {"ssid": "Network2", "signal": -70, "security": "Open"},
         ]
-        
+
         results_bytes = server._get_scan_results_bytes()
-        
+
         data = json.loads(results_bytes.decode("utf-8"))
         assert len(data) == 2
         assert data[0]["ssid"] == "Network1"
@@ -211,7 +211,7 @@ class TestBLEProvisioningServer:
     def test_get_connect_status_bytes_idle(self, server):
         """Test connect status bytes in idle state"""
         status_bytes = server._get_connect_status_bytes()
-        
+
         data = json.loads(status_bytes.decode("utf-8"))
         assert data["state"] == "idle"
         assert data["ssid"] == ""
@@ -224,9 +224,9 @@ class TestBLEProvisioningServer:
             "ssid": "MyNetwork",
             "error": ""
         }
-        
+
         status_bytes = server._get_connect_status_bytes()
-        
+
         data = json.loads(status_bytes.decode("utf-8"))
         assert data["state"] == "connecting"
         assert data["ssid"] == "MyNetwork"
@@ -236,7 +236,7 @@ class TestBLEProvisioningServer:
         with patch("asyncio.ensure_future") as mock_future:
             mock_future.side_effect = lambda coro: coro.close()
             server._handle_scan_trigger(bytearray(b"\xFF"))
-        
+
         # Should schedule the scan
         mock_future.assert_called_once()
 
@@ -244,7 +244,7 @@ class TestBLEProvisioningServer:
         """Test WiFi scan trigger with empty value"""
         with patch("asyncio.ensure_future") as mock_future:
             server._handle_scan_trigger(bytearray(b""))
-        
+
         # Should not schedule the scan
         mock_future.assert_not_called()
 
@@ -254,11 +254,11 @@ class TestBLEProvisioningServer:
             "ssid": "TestNetwork",
             "passphrase": "password123"
         }).encode("utf-8")
-        
+
         with patch("asyncio.ensure_future") as mock_future:
             mock_future.side_effect = lambda coro: coro.close()
             server._handle_wifi_connect(bytearray(payload))
-        
+
         assert server._connect_status["state"] == "connecting"
         assert server._connect_status["ssid"] == "TestNetwork"
         mock_future.assert_called_once()
@@ -269,19 +269,19 @@ class TestBLEProvisioningServer:
             "ssid": "",
             "passphrase": "password"
         }).encode("utf-8")
-        
+
         with patch("asyncio.ensure_future") as mock_future:
             server._handle_wifi_connect(bytearray(payload))
-        
+
         # Should not attempt connection
         mock_future.assert_not_called()
 
     def test_handle_wifi_connect_invalid_json(self, server):
         """Test WiFi connect with invalid JSON"""
         invalid_json = b"{ invalid json"
-        
+
         server._handle_wifi_connect(bytearray(invalid_json))
-        
+
         assert server._connect_status["state"] == "failed"
         assert server._connect_status["error"] != ""
 
@@ -290,12 +290,12 @@ class TestBLEProvisioningServer:
         payload = json.dumps({
             "action": "stop_ble"
         }).encode("utf-8")
-        
+
         mock_loop = MagicMock()
         server.loop = mock_loop
-        
+
         server._handle_ble_control(bytearray(payload))
-        
+
         assert server._shutdown_requested is True
         mock_loop.call_soon_threadsafe.assert_called_once()
 
@@ -304,16 +304,16 @@ class TestBLEProvisioningServer:
         payload = json.dumps({
             "action": "unknown_action"
         }).encode("utf-8")
-        
+
         server._handle_ble_control(bytearray(payload))
-        
+
         # Should not set shutdown flag
         assert server._shutdown_requested is False
 
     def test_handle_ble_control_invalid_json(self, server):
         """Test BLE control with invalid JSON"""
         invalid_json = b"{ invalid }"
-        
+
         # Should not raise exception
         server._handle_ble_control(bytearray(invalid_json))
         assert server._shutdown_requested is False
@@ -329,9 +329,9 @@ class TestNetworkConnectivity:
             {"name": "eth0", "ipv4": "192.168.1.100"},
             {"name": "wlan0", "ipv4": None}
         ]
-        
+
         result = has_network_connectivity()
-        
+
         assert result is True
 
     @patch("src.ble_provisioning.network.list_physical_interfaces")
@@ -341,27 +341,27 @@ class TestNetworkConnectivity:
             {"name": "eth0", "ipv4": None},
             {"name": "wlan0", "ipv4": None}
         ]
-        
+
         result = has_network_connectivity()
-        
+
         assert result is False
 
     @patch("src.ble_provisioning.network.list_physical_interfaces")
     def test_has_network_connectivity_error(self, mock_interfaces):
         """Test network connectivity detection with error"""
         mock_interfaces.side_effect = IOError("Error reading interfaces")
-        
+
         result = has_network_connectivity()
-        
+
         assert result is False
 
     @patch("src.ble_provisioning.network.list_physical_interfaces")
     def test_has_network_connectivity_empty_list(self, mock_interfaces):
         """Test network connectivity detection with no interfaces"""
         mock_interfaces.return_value = []
-        
+
         result = has_network_connectivity()
-        
+
         assert result is False
 
 
@@ -375,9 +375,9 @@ class TestSetupLogging:
         """Test logging setup with normal verbosity"""
         mock_root_logger = MagicMock()
         mock_logger.return_value = mock_root_logger
-        
+
         setup_logging(verbose=False)
-        
+
         mock_root_logger.setLevel.assert_called()
 
     @patch("src.ble_provisioning.logging.getLogger")
@@ -387,9 +387,9 @@ class TestSetupLogging:
         """Test logging setup with verbose flag"""
         mock_root_logger = MagicMock()
         mock_logger.return_value = mock_root_logger
-        
+
         setup_logging(verbose=True)
-        
+
         mock_root_logger.setLevel.assert_called()
 
 
@@ -401,10 +401,10 @@ class TestMainCLI:
     def test_main_check_network_no_connectivity(self, mock_exit, mock_has_conn):
         """Test check-network when no network connectivity"""
         mock_has_conn.return_value = False
-        
+
         with patch("sys.argv", ["ble-provisioning", "--check-network"]):
             main()
-        
+
         mock_exit.assert_called_with(0)
 
     @patch("src.ble_provisioning.has_network_connectivity")
@@ -412,10 +412,10 @@ class TestMainCLI:
     def test_main_check_network_with_connectivity(self, mock_exit, mock_has_conn):
         """Test check-network when network is connected"""
         mock_has_conn.return_value = True
-        
+
         with patch("sys.argv", ["ble-provisioning", "--check-network"]):
             main()
-        
+
         mock_exit.assert_called_with(1)
 
     @patch("src.ble_provisioning.subprocess.run")
@@ -423,10 +423,10 @@ class TestMainCLI:
     def test_main_stop_service(self, mock_exit, mock_run):
         """Test stop action"""
         mock_run.return_value = MagicMock(returncode=0)
-        
+
         with patch("sys.argv", ["ble-provisioning", "--stop"]):
             main()
-        
+
         mock_run.assert_called_once()
         mock_exit.assert_called_with(0)
 
@@ -444,5 +444,5 @@ class TestMainCLI:
             with patch("src.ble_provisioning.has_network_connectivity", return_value=False):
                 with patch("sys.exit"):
                     main()
-        
+
         mock_setup_logging.assert_called()

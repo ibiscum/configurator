@@ -21,7 +21,7 @@ from unittest.mock import patch
 # Add src directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from configdb import ConfigDB
+from configurator.configdb import ConfigDB
 from cryptography.fernet import InvalidToken
 
 

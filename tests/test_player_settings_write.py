@@ -2,8 +2,8 @@ import json
 import os
 from pathlib import Path
 from typing import Any
-from src.handlers.player_registry_handler import PlayerRegistryHandler
-from src.configdb import ConfigDB
+from src.configurator.handlers.player_registry_handler import PlayerRegistryHandler
+from src.configurator.configdb import ConfigDB
 
 
 def _setup(tmp_path: Path) -> tuple[Any, ConfigDB]:

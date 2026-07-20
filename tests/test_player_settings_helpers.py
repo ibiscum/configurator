@@ -1,4 +1,4 @@
-from src.handlers.player_registry_handler import (
+from src.configurator.handlers.player_registry_handler import (
     setting_value_key,
     coerce_setting_value,
     serialize_setting_value,

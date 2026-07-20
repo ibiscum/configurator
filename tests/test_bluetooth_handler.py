@@ -55,7 +55,7 @@ flask_mock.jsonify = mock_jsonify
 flask_mock.Response = MockResponse
 sys.modules['flask'] = flask_mock
 
-from src.handlers.bluetooth_handler import BluetoothHandler  # pylint: disable=wrong-import-position  # noqa: E402
+from configurator.handlers.bluetooth_handler import BluetoothHandler  # pylint: disable=wrong-import-position  # noqa: E402
 
 
 class TestBluetoothHandlerPasskey(unittest.TestCase):

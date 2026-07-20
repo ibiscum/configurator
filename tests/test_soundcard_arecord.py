@@ -2,8 +2,8 @@ from unittest.mock import patch
 from pathlib import Path
 from typing import Any
 
-from src.soundcard import SOUND_CARD_DEFINITIONS  # type: ignore[import-untyped]
-from src.soundcard_detector import SoundcardDetector
+from src.configurator.soundcard import SOUND_CARD_DEFINITIONS  # type: ignore[import-untyped]
+from src.configurator.soundcard_detector import SoundcardDetector
 
 
 ARECORD_ADC = """**** List of CAPTURE Hardware Devices ****

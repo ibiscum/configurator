@@ -19,7 +19,7 @@ from io import StringIO
 # Add repository root to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.hostconfig import (
+from src.configurator.hostconfig import (
     read_hosts_file, write_hosts_file, update_hosts_file,
     get_current_hostname, set_hostname_with_hosts_update,
     validate_hostname, sanitize_hostname, main

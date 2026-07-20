@@ -20,14 +20,13 @@ import sys
 # Add src directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from config_parser import (
+from configurator.config_parser import (
     ConfigParser,
     get_config_parser,
     get_config,
     get_config_section,
     reload_config
 )
-
 
 class TestConfigParserInit:
     """Test ConfigParser initialization"""
@@ -139,7 +138,7 @@ class TestLoadConfig:
             test_config = {"section1": {"key": "value"}, "section2": {"key2": "value2"}}
             json.dump(test_config, f)
             temp_path = f.name
-        
+
         try:
             parser = ConfigParser(config_file=temp_path)
             result = parser.load_config()
@@ -152,7 +151,7 @@ class TestLoadConfig:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
             f.write("{invalid json}")
             temp_path = f.name
-        
+
         try:
             parser = ConfigParser(config_file=temp_path)
             result = parser.load_config()
@@ -165,7 +164,7 @@ class TestLoadConfig:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
             f.write("{}")
             temp_path = f.name
-        
+
         try:
             parser = ConfigParser(config_file=temp_path)
             result = parser.load_config()
@@ -179,7 +178,7 @@ class TestLoadConfig:
             test_config = {"key": "value"}
             json.dump(test_config, f)
             temp_path = f.name
-        
+
         try:
             parser = ConfigParser(config_file=temp_path)
             result1 = parser.load_config()
@@ -201,7 +200,7 @@ class TestLoadDropIns:
             # Create config file but not conf.d directory
             with open(config_path, 'w') as f:
                 json.dump({"key": "value"}, f)
-            
+
             parser = ConfigParser(config_file=config_path)
             config = {"key": "value"}
             result = parser._load_drop_ins(config)
@@ -214,14 +213,14 @@ class TestLoadDropIns:
             config_path = os.path.join(tmpdir, "config.json")
             with open(config_path, 'w') as f:
                 json.dump({"section1": {"key1": "value1"}}, f)
-            
+
             # Create conf.d directory and drop-in file
             conf_d_dir = os.path.join(tmpdir, "conf.d")
             os.makedirs(conf_d_dir)
             drop_in_path = os.path.join(conf_d_dir, "01-override.json")
             with open(drop_in_path, 'w') as f:
                 json.dump({"section1": {"key1": "overridden"}}, f)
-            
+
             parser = ConfigParser(config_file=config_path)
             config = {"section1": {"key1": "value1"}}
             result = parser._load_drop_ins(config)
@@ -234,20 +233,20 @@ class TestLoadDropIns:
             config_path = os.path.join(tmpdir, "config.json")
             with open(config_path, 'w') as f:
                 json.dump({"key": "base"}, f)
-            
+
             # Create conf.d directory and multiple drop-in files
             conf_d_dir = os.path.join(tmpdir, "conf.d")
             os.makedirs(conf_d_dir)
-            
+
             # Create files that will be sorted
             drop_in_1 = os.path.join(conf_d_dir, "01-first.json")
             with open(drop_in_1, 'w') as f:
                 json.dump({"key": "first"}, f)
-            
+
             drop_in_2 = os.path.join(conf_d_dir, "02-second.json")
             with open(drop_in_2, 'w') as f:
                 json.dump({"key": "second"}, f)
-            
+
             parser = ConfigParser(config_file=config_path)
             config = {"key": "base"}
             result = parser._load_drop_ins(config)
@@ -261,14 +260,14 @@ class TestLoadDropIns:
             config_path = os.path.join(tmpdir, "config.json")
             with open(config_path, 'w') as f:
                 json.dump({"key": "value"}, f)
-            
+
             # Create conf.d directory with invalid JSON
             conf_d_dir = os.path.join(tmpdir, "conf.d")
             os.makedirs(conf_d_dir)
             drop_in_path = os.path.join(conf_d_dir, "bad.json")
             with open(drop_in_path, 'w') as f:
                 f.write("{invalid}")
-            
+
             parser = ConfigParser(config_file=config_path)
             config = {"key": "value"}
             result = parser._load_drop_ins(config)
@@ -282,14 +281,14 @@ class TestLoadDropIns:
             config_path = os.path.join(tmpdir, "config.json")
             with open(config_path, 'w') as f:
                 json.dump({"key": "value"}, f)
-            
+
             # Create conf.d directory with array as top-level
             conf_d_dir = os.path.join(tmpdir, "conf.d")
             os.makedirs(conf_d_dir)
             drop_in_path = os.path.join(conf_d_dir, "array.json")
             with open(drop_in_path, 'w') as f:
                 json.dump(["item1", "item2"], f)
-            
+
             parser = ConfigParser(config_file=config_path)
             config = {"key": "value"}
             result = parser._load_drop_ins(config)
@@ -303,24 +302,24 @@ class TestLoadDropIns:
             config_path = os.path.join(tmpdir, "config.json")
             with open(config_path, 'w') as f:
                 json.dump({"order": []}, f)
-            
+
             # Create conf.d directory with unsorted files
             conf_d_dir = os.path.join(tmpdir, "conf.d")
             os.makedirs(conf_d_dir)
-            
+
             # Create files in reverse order
             drop_in_3 = os.path.join(conf_d_dir, "03-third.json")
             with open(drop_in_3, 'w') as f:
                 json.dump({"order": [3]}, f)
-            
+
             drop_in_1 = os.path.join(conf_d_dir, "01-first.json")
             with open(drop_in_1, 'w') as f:
                 json.dump({"order": [1]}, f)
-            
+
             drop_in_2 = os.path.join(conf_d_dir, "02-second.json")
             with open(drop_in_2, 'w') as f:
                 json.dump({"order": [2]}, f)
-            
+
             parser = ConfigParser(config_file=config_path)
             config = {"order": []}
             result = parser._load_drop_ins(config)
@@ -337,7 +336,7 @@ class TestGetConfig:
             test_config = {"key": "value"}
             json.dump(test_config, f)
             temp_path = f.name
-        
+
         try:
             parser = ConfigParser(config_file=temp_path)
             assert parser._config is None  # Not loaded yet
@@ -353,7 +352,7 @@ class TestGetConfig:
             test_config = {"key": "value"}
             json.dump(test_config, f)
             temp_path = f.name
-        
+
         try:
             parser = ConfigParser(config_file=temp_path)
             result1 = parser.get_config()
@@ -373,7 +372,7 @@ class TestGetSection:
             test_config = {"section1": {"key": "value"}, "section2": {"key2": "value2"}}
             json.dump(test_config, f)
             temp_path = f.name
-        
+
         try:
             parser = ConfigParser(config_file=temp_path)
             result = parser.get_section("section1")
@@ -387,7 +386,7 @@ class TestGetSection:
             test_config = {"section1": {"key": "value"}}
             json.dump(test_config, f)
             temp_path = f.name
-        
+
         try:
             parser = ConfigParser(config_file=temp_path)
             result = parser.get_section("nonexistent")
@@ -401,7 +400,7 @@ class TestGetSection:
             test_config = {"section1": {"key": "value"}}
             json.dump(test_config, f)
             temp_path = f.name
-        
+
         try:
             parser = ConfigParser(config_file=temp_path)
             default = {"default_key": "default_value"}
@@ -420,7 +419,7 @@ class TestReloadConfig:
             test_config = {"key": "value"}
             json.dump(test_config, f)
             temp_path = f.name
-        
+
         try:
             parser = ConfigParser(config_file=temp_path)
             # Load config
@@ -439,16 +438,16 @@ class TestReloadConfig:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
             json.dump({"key": "original"}, f)
             temp_path = f.name
-        
+
         try:
             parser = ConfigParser(config_file=temp_path)
             config1 = parser.get_config()
             assert config1["key"] == "original"
-            
+
             # Modify file
             with open(temp_path, 'w') as f:
                 json.dump({"key": "modified"}, f)
-            
+
             # Reload
             config2 = parser.reload_config()
             assert config2["key"] == "modified"
@@ -465,7 +464,7 @@ class TestHasSection:
             test_config = {"section1": {"key": "value"}}
             json.dump(test_config, f)
             temp_path = f.name
-        
+
         try:
             parser = ConfigParser(config_file=temp_path)
             assert parser.has_section("section1") is True
@@ -478,7 +477,7 @@ class TestHasSection:
             test_config = {"section1": {"key": "value"}}
             json.dump(test_config, f)
             temp_path = f.name
-        
+
         try:
             parser = ConfigParser(config_file=temp_path)
             assert parser.has_section("nonexistent") is False
@@ -509,7 +508,7 @@ class TestGlobalFunctions:
         # Clear the global instance first
         import config_parser as cp_module
         cp_module._config_parser = None
-        
+
         parser1 = get_config_parser()
         parser2 = get_config_parser()
         assert parser1 is parser2
@@ -520,7 +519,7 @@ class TestGlobalFunctions:
         mock_parser = MagicMock()
         mock_parser.get_config.return_value = {"test": "config"}
         mock_get_parser.return_value = mock_parser
-        
+
         result = get_config()
         assert result == {"test": "config"}
         mock_parser.get_config.assert_called_once()
@@ -531,7 +530,7 @@ class TestGlobalFunctions:
         mock_parser = MagicMock()
         mock_parser.get_section.return_value = {"section": "data"}
         mock_get_parser.return_value = mock_parser
-        
+
         result = get_config_section("test_section", {"default": "value"})
         assert result == {"section": "data"}
         mock_parser.get_section.assert_called_once_with("test_section", {"default": "value"})
@@ -542,7 +541,7 @@ class TestGlobalFunctions:
         mock_parser = MagicMock()
         mock_parser.reload_config.return_value = {"reloaded": "config"}
         mock_get_parser.return_value = mock_parser
-        
+
         result = reload_config()
         assert result == {"reloaded": "config"}
         mock_parser.reload_config.assert_called_once()
@@ -564,7 +563,7 @@ class TestEdgeCasesAndRobustness:
             }
             json.dump(test_config, f)
             temp_path = f.name
-        
+
         try:
             parser = ConfigParser(config_file=temp_path)
             result = parser.get_config()
@@ -582,7 +581,7 @@ class TestEdgeCasesAndRobustness:
             }
             json.dump(test_config, f, ensure_ascii=False)
             temp_path = f.name
-        
+
         try:
             parser = ConfigParser(config_file=temp_path)
             result = parser.get_config()
@@ -608,7 +607,7 @@ class TestEdgeCasesAndRobustness:
             }
             json.dump(test_config, f)
             temp_path = f.name
-        
+
         try:
             parser = ConfigParser(config_file=temp_path)
             result = parser.get_config()
@@ -623,14 +622,14 @@ class TestEdgeCasesAndRobustness:
             config_path = os.path.join(tmpdir, "config.json")
             with open(config_path, 'w') as f:
                 json.dump({"section1": {"key1": "value1"}}, f)
-            
+
             # Create conf.d directory with new section
             conf_d_dir = os.path.join(tmpdir, "conf.d")
             os.makedirs(conf_d_dir)
             drop_in_path = os.path.join(conf_d_dir, "new.json")
             with open(drop_in_path, 'w') as f:
                 json.dump({"section2": {"key2": "value2"}}, f)
-            
+
             parser = ConfigParser(config_file=config_path)
             config = parser.load_config()
             assert "section1" in config
